@@ -416,3 +416,8 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+# suzerain save editor - backup files created by the app
+backups/
+*.claude
+IMPLEMENTATION_PLAN.md
+CLAUDE.md
