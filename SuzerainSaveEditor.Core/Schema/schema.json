@@ -1,0 +1,445 @@
+[
+    {
+        "id": "meta.campaignName",
+        "path": "meta:campaignName",
+        "label": "Campaign Name",
+        "group": "General",
+        "type": "String",
+        "source": "Metadata",
+        "description": "Name of the campaign (e.g. KING, PRESIDENT)"
+    },
+    {
+        "id": "meta.saveFileName",
+        "path": "meta:saveFileName",
+        "label": "Save File Name",
+        "group": "General",
+        "type": "String",
+        "source": "Metadata"
+    },
+    {
+        "id": "meta.turnNo",
+        "path": "meta:turnNo",
+        "label": "Turn Number",
+        "group": "General",
+        "type": "Int",
+        "source": "Metadata",
+        "description": "Current turn number",
+        "min": 1,
+        "max": 20
+    },
+    {
+        "id": "meta.version",
+        "path": "meta:version",
+        "label": "Game Version",
+        "group": "General",
+        "type": "String",
+        "source": "Metadata"
+    },
+    {
+        "id": "meta.isTorporModeOn",
+        "path": "meta:isTorporModeOn",
+        "label": "Torpor Mode",
+        "group": "General",
+        "type": "Bool",
+        "source": "Metadata",
+        "description": "Whether torpor (difficulty) mode is enabled"
+    },
+    {
+        "id": "meta.notes",
+        "path": "meta:notes",
+        "label": "Save Notes",
+        "group": "General",
+        "type": "String",
+        "source": "Metadata"
+    },
+    {
+        "id": "sordland.currentTurn",
+        "path": "variable:BaseGameSetup.CurrentTurn",
+        "label": "Current Turn",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Internal turn counter for Sordland campaign",
+        "min": 1,
+        "max": 20
+    },
+    {
+        "id": "sordland.governmentBudget",
+        "path": "variable:BaseGame.GovernmentBudget",
+        "label": "Government Budget",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Current government budget level",
+        "min": -10,
+        "max": 10
+    },
+    {
+        "id": "sordland.economyTaxation",
+        "path": "variable:BaseGame.Economy_Taxation",
+        "label": "Taxation Level",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Current taxation policy level",
+        "min": 0,
+        "max": 5
+    },
+    {
+        "id": "sordland.economicState",
+        "path": "variable:BaseGame.Economy_EconomicState",
+        "label": "Economic State",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Overall economic health indicator",
+        "min": -10,
+        "max": 10
+    },
+    {
+        "id": "sordland.oilPrice",
+        "path": "variable:BaseGame.Economy_OilPrice",
+        "label": "Oil Price",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Global oil price index"
+    },
+    {
+        "id": "sordland.healthcareSpending",
+        "path": "variable:BaseGame.Economy_Healthcare_Spending",
+        "label": "Healthcare Spending",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable"
+    },
+    {
+        "id": "sordland.educationSpending",
+        "path": "variable:BaseGame.Economy_Education_Spending",
+        "label": "Education Spending",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable"
+    },
+    {
+        "id": "sordland.lawEnforcementSpending",
+        "path": "variable:BaseGame.Economy_LawEnforcement_Spending",
+        "label": "Law Enforcement Spending",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable"
+    },
+    {
+        "id": "sordland.socialSpending",
+        "path": "variable:BaseGame.Economy_Social_Spending",
+        "label": "Social Spending",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable"
+    },
+    {
+        "id": "sordland.infrastructureSpending",
+        "path": "variable:BaseGame.Economy_Infrastructure_Spending",
+        "label": "Infrastructure Spending",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable"
+    },
+    {
+        "id": "sordland.opinionOldGuard",
+        "path": "variable:BaseGame.Opinion_OldGuard",
+        "label": "Old Guard Opinion",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Old Guard faction approval rating"
+    },
+    {
+        "id": "sordland.opinionReformist",
+        "path": "variable:BaseGame.Opinion_Reformist",
+        "label": "Reformist Opinion",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Reformist faction approval rating"
+    },
+    {
+        "id": "sordland.opinionNationalist",
+        "path": "variable:BaseGame.Opinion_NFP",
+        "label": "Nationalist (NFP) Opinion",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "NFP nationalist faction approval rating"
+    },
+    {
+        "id": "sordland.opinionBluds",
+        "path": "variable:BaseGame.Opinion_Bluds",
+        "label": "Bludish Opinion",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Bludish minority approval rating"
+    },
+    {
+        "id": "sordland.opinionMilitary",
+        "path": "variable:BaseGame.Opinion_Military",
+        "label": "Military Opinion",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Military approval rating"
+    },
+    {
+        "id": "sordland.opinionOligarchs",
+        "path": "variable:BaseGame.Opinion_Oligarchs",
+        "label": "Oligarch Opinion",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Oligarch faction approval rating"
+    },
+    {
+        "id": "sordland.relationsRumburg",
+        "path": "variable:BaseGame.Relations_Rumburg",
+        "label": "Rumburg Relations",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Diplomatic relations with Rumburg"
+    },
+    {
+        "id": "sordland.relationsLespia",
+        "path": "variable:BaseGame.Relations_Lespia",
+        "label": "Lespia Relations",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Diplomatic relations with Lespia"
+    },
+    {
+        "id": "sordland.relationsAgnolia",
+        "path": "variable:BaseGame.Relations_Agnolia",
+        "label": "Agnolia Relations",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Diplomatic relations with Agnolia"
+    },
+    {
+        "id": "sordland.relationsWehlen",
+        "path": "variable:BaseGame.Relations_Wehlen",
+        "label": "Wehlen Relations",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Diplomatic relations with Wehlen"
+    },
+    {
+        "id": "sordland.relationsContana",
+        "path": "variable:BaseGame.Relations_Contana",
+        "label": "Contana Relations",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Diplomatic relations with Contana"
+    },
+    {
+        "id": "sordland.relationsValgsland",
+        "path": "variable:BaseGame.Relations_Valgsland",
+        "label": "Valgsland Relations",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Diplomatic relations with Valgsland"
+    },
+    {
+        "id": "sordland.constitutionReform",
+        "path": "variable:BaseGame.ConstitutionReform",
+        "label": "Constitution Reform",
+        "group": "Sordland",
+        "type": "Bool",
+        "source": "Variable",
+        "description": "Whether constitutional reform has been enacted"
+    },
+    {
+        "id": "sordland.impeached",
+        "path": "variable:BaseGame.Impeached",
+        "label": "Impeached",
+        "group": "Sordland",
+        "type": "Bool",
+        "source": "Variable",
+        "description": "Whether the president has been impeached"
+    },
+    {
+        "id": "sordland.alphonsoTitle",
+        "path": "variable:BaseGameText.AlphonsoToPlayer",
+        "label": "Alphonso's Title for Player",
+        "group": "Sordland",
+        "type": "String",
+        "source": "Variable",
+        "description": "How Alphonso addresses the player"
+    },
+    {
+        "id": "rizia.currentTurn",
+        "path": "variable:RiziaDLCSetup.CurrentTurn",
+        "label": "Current Turn",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Internal turn counter for Rizia campaign",
+        "min": 1,
+        "max": 20
+    },
+    {
+        "id": "rizia.governmentBudget",
+        "path": "variable:RiziaDLC.GovernmentBudget",
+        "label": "Government Budget",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Rizia government budget level"
+    },
+    {
+        "id": "rizia.royalTreasury",
+        "path": "variable:RiziaDLC.RoyalTreasury",
+        "label": "Royal Treasury",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Royal treasury funds"
+    },
+    {
+        "id": "rizia.opinionNobles",
+        "path": "variable:RiziaDLC.Opinion_Nobles",
+        "label": "Noble Opinion",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Nobility approval rating"
+    },
+    {
+        "id": "rizia.opinionMerchants",
+        "path": "variable:RiziaDLC.Opinion_Merchants",
+        "label": "Merchant Opinion",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Merchant class approval rating"
+    },
+    {
+        "id": "rizia.opinionPeasants",
+        "path": "variable:RiziaDLC.Opinion_Peasants",
+        "label": "Peasant Opinion",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Peasant class approval rating"
+    },
+    {
+        "id": "rizia.opinionClergy",
+        "path": "variable:RiziaDLC.Opinion_Clergy",
+        "label": "Clergy Opinion",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Clergy approval rating"
+    },
+    {
+        "id": "rizia.opinionMilitary",
+        "path": "variable:RiziaDLC.Opinion_Military",
+        "label": "Military Opinion",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Military approval rating"
+    },
+    {
+        "id": "rizia.relationsWehlen",
+        "path": "variable:RiziaDLC.Relations_Wehlen",
+        "label": "Wehlen Relations",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Diplomatic relations with Wehlen"
+    },
+    {
+        "id": "rizia.relationsLespia",
+        "path": "variable:RiziaDLC.Relations_Lespia",
+        "label": "Lespia Relations",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Diplomatic relations with Lespia"
+    },
+    {
+        "id": "rizia.relationsRumburg",
+        "path": "variable:RiziaDLC.Relations_Rumburg",
+        "label": "Rumburg Relations",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Diplomatic relations with Rumburg"
+    },
+    {
+        "id": "rizia.kingsSon",
+        "path": "variable:RiziaDLCText.KingsSon",
+        "label": "King's Son Name",
+        "group": "Rizia",
+        "type": "String",
+        "source": "Variable",
+        "description": "Name of the heir to the throne"
+    },
+    {
+        "id": "rizia.finalChapterTitle",
+        "path": "variable:RiziaDLCText.FinalChapterTitle",
+        "label": "Final Chapter Title",
+        "group": "Rizia",
+        "type": "String",
+        "source": "Variable"
+    },
+    {
+        "id": "rizia.lucitaTitle",
+        "path": "variable:RiziaDLCText.LucitaTitle",
+        "label": "Lucita's Title",
+        "group": "Rizia",
+        "type": "String",
+        "source": "Variable",
+        "description": "Lucita's official title in the government"
+    },
+    {
+        "id": "rizia.theocracyName",
+        "path": "variable:RiziaDLCText.TheocracyName",
+        "label": "Theocracy Name",
+        "group": "Rizia",
+        "type": "String",
+        "source": "Variable"
+    },
+    {
+        "id": "rizia.entityWehlenRelations",
+        "path": "entity:Rizia_Country_Wehlen.Relations",
+        "label": "Wehlen Entity Relations",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "EntityUpdate",
+        "description": "Entity-level relations value for Wehlen"
+    },
+    {
+        "id": "rizia.entityValgslandRelations",
+        "path": "entity:Rizia_Country_Valgsland.Relations",
+        "label": "Valgsland Entity Relations",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "EntityUpdate",
+        "description": "Entity-level relations value for Valgsland"
+    },
+    {
+        "id": "rizia.hodComposition",
+        "path": "entity:Page_HouseOfDelegates.CurrentComposition",
+        "label": "House of Delegates Composition",
+        "group": "Rizia",
+        "type": "String",
+        "source": "EntityUpdate",
+        "description": "Current composition of the House of Delegates"
+    }
+]
