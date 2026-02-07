@@ -1,0 +1,1276 @@
+[
+    {
+        "id": "meta.campaignName",
+        "path": "meta:campaignName",
+        "label": "Campaign Name",
+        "group": "General",
+        "type": "String",
+        "source": "Metadata",
+        "description": "Name of the campaign (e.g. KING, PRESIDENT)"
+    },
+    {
+        "id": "meta.saveFileName",
+        "path": "meta:saveFileName",
+        "label": "Save File Name",
+        "group": "General",
+        "type": "String",
+        "source": "Metadata"
+    },
+    {
+        "id": "meta.turnNo",
+        "path": "meta:turnNo",
+        "label": "Turn Number",
+        "group": "General",
+        "type": "Int",
+        "source": "Metadata",
+        "description": "Current turn number",
+        "min": 1,
+        "max": 20
+    },
+    {
+        "id": "meta.version",
+        "path": "meta:version",
+        "label": "Game Version",
+        "group": "General",
+        "type": "String",
+        "source": "Metadata"
+    },
+    {
+        "id": "meta.isTorporModeOn",
+        "path": "meta:isTorporModeOn",
+        "label": "Torpor Mode",
+        "group": "General",
+        "type": "Bool",
+        "source": "Metadata",
+        "description": "Whether torpor (difficulty) mode is enabled"
+    },
+    {
+        "id": "meta.notes",
+        "path": "meta:notes",
+        "label": "Save Notes",
+        "group": "General",
+        "type": "String",
+        "source": "Metadata"
+    },
+    {
+        "id": "sordland.currentTurn",
+        "path": "variable:BaseGameSetup.CurrentTurn",
+        "label": "Current Turn",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Internal turn counter for Sordland campaign",
+        "min": 1,
+        "max": 20
+    },
+    {
+        "id": "sordland.personalWealth",
+        "path": "variable:BaseGame.PersonalWealth",
+        "label": "Personal Wealth",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "President's personal wealth"
+    },
+    {
+        "id": "sordland.governmentBudget",
+        "path": "variable:BaseGame.GovernmentBudget",
+        "label": "Government Budget",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Current government budget level"
+    },
+    {
+        "id": "sordland.governmentBudgetMax",
+        "path": "variable:BaseGame.Sordland_HUDStat_GovernmentBudget_Max",
+        "label": "Government Budget Max",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Maximum government budget cap"
+    },
+    {
+        "id": "sordland.economyTaxation",
+        "path": "variable:BaseGame.Economy_Taxation",
+        "label": "Taxation Level",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Current taxation policy level"
+    },
+    {
+        "id": "sordland.economicState",
+        "path": "variable:BaseGame.Economy_EconomicState",
+        "label": "Economic State",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Overall economic health indicator"
+    },
+    {
+        "id": "sordland.oilPrice",
+        "path": "variable:BaseGame.Economy_OilPrice",
+        "label": "Oil Price",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Global oil price index"
+    },
+    {
+        "id": "sordland.healthcareSpending",
+        "path": "variable:BaseGame.Economy_Healthcare_Spending",
+        "label": "Healthcare Spending",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable"
+    },
+    {
+        "id": "sordland.educationSpending",
+        "path": "variable:BaseGame.Economy_Education_Spending",
+        "label": "Education Spending",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable"
+    },
+    {
+        "id": "sordland.lawEnforcementSpending",
+        "path": "variable:BaseGame.Economy_LawEnforcement_Spending",
+        "label": "Law Enforcement Spending",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable"
+    },
+    {
+        "id": "sordland.socialSpending",
+        "path": "variable:BaseGame.Economy_Social_Spending",
+        "label": "Social Spending",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable"
+    },
+    {
+        "id": "sordland.infrastructureSpending",
+        "path": "variable:BaseGame.Economy_Infrastructure_Spending",
+        "label": "Infrastructure Spending",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable"
+    },
+    {
+        "id": "sordland.economyAgnland",
+        "path": "variable:BaseGame.Economy_Agnland",
+        "label": "Agnland Economy",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Economic level of the Agnland region"
+    },
+    {
+        "id": "sordland.economyBergia",
+        "path": "variable:BaseGame.Economy_Bergia",
+        "label": "Bergia Economy",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Economic level of the Bergia region"
+    },
+    {
+        "id": "sordland.economyLorren",
+        "path": "variable:BaseGame.Economy_Lorren",
+        "label": "Lorren Economy",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Economic level of the Lorren region"
+    },
+    {
+        "id": "sordland.lorrenEconomicStabilisation",
+        "path": "variable:BaseGame.Situation_Economy_Lorren_EconomicStabilisation",
+        "label": "Lorren Economic Stabilisation",
+        "group": "Sordland",
+        "type": "Bool",
+        "source": "Variable",
+        "description": "Whether Lorren has achieved economic stabilisation"
+    },
+    {
+        "id": "sordland.lorrenProductionAndTradeCenter",
+        "path": "variable:BaseGame.Situation_Economy_Lorren_ProductionAndTradeCenter",
+        "label": "Lorren Production & Trade Center",
+        "group": "Sordland",
+        "type": "Bool",
+        "source": "Variable",
+        "description": "Whether Lorren is a production and trade center"
+    },
+    {
+        "id": "sordland.lorrenRustBelt",
+        "path": "variable:BaseGame.Situation_Economy_Lorren_RustBelt",
+        "label": "Lorren Rust Belt",
+        "group": "Sordland",
+        "type": "Bool",
+        "source": "Variable",
+        "description": "Whether Lorren is in a rust belt economic state"
+    },
+    {
+        "id": "sordland.agnlandEconomicStabilisation",
+        "path": "variable:BaseGame.Situation_Economy_Agnland_EconomicStabilisation",
+        "label": "Agnland Economic Stabilisation",
+        "group": "Sordland",
+        "type": "Bool",
+        "source": "Variable",
+        "description": "Whether Agnland has achieved economic stabilisation"
+    },
+    {
+        "id": "sordland.agnlandLackInvestment",
+        "path": "variable:BaseGame.Situation_Economy_Agnland_LackInvestment",
+        "label": "Agnland Lack of Investment",
+        "group": "Sordland",
+        "type": "Bool",
+        "source": "Variable",
+        "description": "Whether Agnland suffers from lack of investment"
+    },
+    {
+        "id": "sordland.agnlandMajorFishExport",
+        "path": "variable:BaseGame.Situation_Economy_Agnland_MajorFishExport",
+        "label": "Agnland Major Fish Export",
+        "group": "Sordland",
+        "type": "Bool",
+        "source": "Variable",
+        "description": "Whether Agnland has a major fish export industry"
+    },
+    {
+        "id": "sordland.bergiaEconomicDownturn",
+        "path": "variable:BaseGame.Situation_Economy_Bergia_EconomicDownturn",
+        "label": "Bergia Economic Downturn",
+        "group": "Sordland",
+        "type": "Bool",
+        "source": "Variable",
+        "description": "Whether Bergia is in an economic downturn"
+    },
+    {
+        "id": "sordland.bergiaEconomicStabilisation",
+        "path": "variable:BaseGame.Situation_Economy_Bergia_EconomicStabilisation",
+        "label": "Bergia Economic Stabilisation",
+        "group": "Sordland",
+        "type": "Bool",
+        "source": "Variable",
+        "description": "Whether Bergia has achieved economic stabilisation"
+    },
+    {
+        "id": "sordland.bergiaMajorAgriculturalZone",
+        "path": "variable:BaseGame.Situation_Economy_Bergia_MajorAgriculturalZone",
+        "label": "Bergia Major Agricultural Zone",
+        "group": "Sordland",
+        "type": "Bool",
+        "source": "Variable",
+        "description": "Whether Bergia is a major agricultural zone"
+    },
+    {
+        "id": "sordland.opinionOldGuard",
+        "path": "variable:BaseGame.Opinion_OldGuard",
+        "label": "Old Guard Opinion",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Old Guard faction approval rating"
+    },
+    {
+        "id": "sordland.opinionReformist",
+        "path": "variable:BaseGame.Opinion_Reformist",
+        "label": "Reformist Opinion",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Reformist faction approval rating"
+    },
+    {
+        "id": "sordland.opinionNationalist",
+        "path": "variable:BaseGame.Opinion_NFP",
+        "label": "Nationalist (NFP) Opinion",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "NFP nationalist faction approval rating"
+    },
+    {
+        "id": "sordland.opinionBluds",
+        "path": "variable:BaseGame.Opinion_Bluds",
+        "label": "Bludish Opinion",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Bludish minority approval rating"
+    },
+    {
+        "id": "sordland.opinionMilitary",
+        "path": "variable:BaseGame.Opinion_Military",
+        "label": "Military Opinion",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Military approval rating"
+    },
+    {
+        "id": "sordland.opinionOligarchs",
+        "path": "variable:BaseGame.Opinion_Oligarchs",
+        "label": "Oligarch Opinion",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Oligarch faction approval rating"
+    },
+    {
+        "id": "sordland.relationsRumburg",
+        "path": "variable:BaseGame.Relations_Rumburg",
+        "label": "Rumburg Relations",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Diplomatic relations with Rumburg"
+    },
+    {
+        "id": "sordland.relationsLespia",
+        "path": "variable:BaseGame.Relations_Lespia",
+        "label": "Lespia Relations",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Diplomatic relations with Lespia"
+    },
+    {
+        "id": "sordland.relationsAgnolia",
+        "path": "variable:BaseGame.Relations_Agnolia",
+        "label": "Agnolia Relations",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Diplomatic relations with Agnolia"
+    },
+    {
+        "id": "sordland.relationsWehlen",
+        "path": "variable:BaseGame.Relations_Wehlen",
+        "label": "Wehlen Relations",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Diplomatic relations with Wehlen"
+    },
+    {
+        "id": "sordland.relationsContana",
+        "path": "variable:BaseGame.Relations_Contana",
+        "label": "Contana Relations",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Diplomatic relations with Contana"
+    },
+    {
+        "id": "sordland.relationsValgsland",
+        "path": "variable:BaseGame.Relations_Valgsland",
+        "label": "Valgsland Relations",
+        "group": "Sordland",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Diplomatic relations with Valgsland"
+    },
+    {
+        "id": "sordland.constitutionReform",
+        "path": "variable:BaseGame.ConstitutionReform",
+        "label": "Constitution Reform",
+        "group": "Sordland",
+        "type": "Bool",
+        "source": "Variable",
+        "description": "Whether constitutional reform has been enacted"
+    },
+    {
+        "id": "sordland.impeached",
+        "path": "variable:BaseGame.Impeached",
+        "label": "Impeached",
+        "group": "Sordland",
+        "type": "Bool",
+        "source": "Variable",
+        "description": "Whether the president has been impeached"
+    },
+    {
+        "id": "sordland.alphonsoTitle",
+        "path": "variable:BaseGameText.AlphonsoToPlayer",
+        "label": "Alphonso's Title for Player",
+        "group": "Sordland",
+        "type": "String",
+        "source": "Variable",
+        "description": "How Alphonso addresses the player"
+    },
+    {
+        "id": "rizia.currentTurn",
+        "path": "variable:RiziaDLCSetup.CurrentTurn",
+        "label": "Current Turn",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Internal turn counter for Rizia campaign",
+        "min": 1,
+        "max": 20
+    },
+    {
+        "id": "rizia.governmentBudget",
+        "path": "variable:RiziaDLC.GovernmentBudget",
+        "label": "Government Budget",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Rizia government budget level"
+    },
+    {
+        "id": "rizia.royalTreasury",
+        "path": "variable:RiziaDLC.RoyalTreasury",
+        "label": "Royal Treasury",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Royal treasury funds"
+    },
+    {
+        "id": "rizia.resourcesBudget",
+        "path": "variable:RiziaDLC.Resources_Budget",
+        "label": "Resources: Budget",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Total budget resources available"
+    },
+    {
+        "id": "rizia.resourcesAuthority",
+        "path": "variable:RiziaDLC.Resources_Authority",
+        "label": "Resources: Authority",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Total authority resources available"
+    },
+    {
+        "id": "rizia.resourcesEnergy",
+        "path": "variable:RiziaDLC.Resources_Energy",
+        "label": "Resources: Energy",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Total energy resources available"
+    },
+    {
+        "id": "rizia.budgetMaxHud",
+        "path": "variable:RiziaDLC.Rizia_HUDStat_Budget_Max",
+        "label": "Budget Max (HUD)",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Maximum budget value shown on HUD"
+    },
+    {
+        "id": "rizia.authorityMaxHud",
+        "path": "variable:RiziaDLC.Rizia_HUDStat_Authority_Max",
+        "label": "Authority Max (HUD)",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Maximum authority value shown on HUD"
+    },
+    {
+        "id": "rizia.energyMaxHud",
+        "path": "variable:RiziaDLC.Rizia_HUDStat_Energy_Max",
+        "label": "Energy Max (HUD)",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Maximum energy value shown on HUD"
+    },
+    {
+        "id": "rizia.budgetModifierIncomeTax",
+        "path": "variable:RiziaDLC.Budget_Modifier_IncomeTax",
+        "label": "Budget Modifier: Income Tax",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Income tax budget modifier value"
+    },
+    {
+        "id": "rizia.authorityModifierBaseMonarch",
+        "path": "variable:RiziaDLC.Authority_Modifier_BaseMonarchRomus",
+        "label": "Authority Modifier: Base Monarch",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Base monarch authority modifier (Romus)"
+    },
+    {
+        "id": "rizia.energyModifierBase",
+        "path": "variable:RiziaDLC.Energy_Modifier_BaseEnergy",
+        "label": "Energy Modifier: Base Energy",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Base energy modifier value"
+    },
+    {
+        "id": "rizia.militaryManpower",
+        "path": "variable:RiziaDLC.Resources_Military_Manpower",
+        "label": "Military: Manpower",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Available military manpower"
+    },
+    {
+        "id": "rizia.militaryEquipment",
+        "path": "variable:RiziaDLC.Resources_Military_Equipment",
+        "label": "Military: Equipment",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Available military equipment"
+    },
+    {
+        "id": "rizia.militaryTrucks",
+        "path": "variable:RiziaDLC.Resources_Military_Trucks",
+        "label": "Military: Trucks",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Available military trucks"
+    },
+    {
+        "id": "rizia.militaryTanks",
+        "path": "variable:RiziaDLC.Resources_Military_Tanks",
+        "label": "Military: Tanks",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Available military tanks (resource count)"
+    },
+    {
+        "id": "rizia.militaryShips",
+        "path": "variable:RiziaDLC.Resources_Military_Ships",
+        "label": "Military: Ships",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Available military ships (resource count)"
+    },
+    {
+        "id": "rizia.militarySubmarines",
+        "path": "variable:RiziaDLC.Resources_Military_Submarines",
+        "label": "Military: Submarines",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Available military submarines (resource count)"
+    },
+    {
+        "id": "rizia.equipmentModifierFactory",
+        "path": "variable:RiziaDLC.Equipment_Modifier_Factory",
+        "label": "Equipment Modifier: Factory",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Equipment production modifier from factories"
+    },
+    {
+        "id": "rizia.tankModifierFactory",
+        "path": "variable:RiziaDLC.Tank_Modifier_Factory",
+        "label": "Tank Modifier: Factory",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Tank production modifier from factories"
+    },
+    {
+        "id": "rizia.supportVehicleModifierFactory",
+        "path": "variable:RiziaDLC.SupportVehicle_Modifier_Factory",
+        "label": "Support Vehicle Modifier: Factory",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Support vehicle production modifier from factories"
+    },
+    {
+        "id": "rizia.manpowerModifierRecruitment",
+        "path": "variable:RiziaDLC.Manpower_Modifier_Recruitment",
+        "label": "Manpower Modifier: Recruitment",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Manpower modifier from recruitment"
+    },
+    {
+        "id": "rizia.airStrikeRefill",
+        "path": "variable:RiziaDLC.Resources_Military_AirStrikeRefillPerFragment",
+        "label": "Air Strike Refill per Fragment",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Air strike refill rate per fragment"
+    },
+    {
+        "id": "rizia.navalBombardment",
+        "path": "variable:RiziaDLC.Resources_Military_NavalBombardmentCapability",
+        "label": "Naval Bombardment Capability",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Naval bombardment capability level"
+    },
+    {
+        "id": "rizia.warActionPoints",
+        "path": "variable:RiziaDLC.War_ActionPoints",
+        "label": "War Action Points",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Available war action points"
+    },
+    {
+        "id": "rizia.armyShips",
+        "path": "variable:RiziaDLC.Army_Unit_Ship_Total",
+        "label": "Army Units: Ships",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Total ship army units"
+    },
+    {
+        "id": "rizia.armySubmarines",
+        "path": "variable:RiziaDLC.Army_Unit_Submarine_Total",
+        "label": "Army Units: Submarines",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Total submarine army units"
+    },
+    {
+        "id": "rizia.armyFlagship",
+        "path": "variable:RiziaDLC.Army_Unit_Flagship_Total",
+        "label": "Army Units: Flagship",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Total flagship army units"
+    },
+    {
+        "id": "rizia.armyMarines",
+        "path": "variable:RiziaDLC.Army_Unit_Marine_Total",
+        "label": "Army Units: Marines",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Total marine army units"
+    },
+    {
+        "id": "rizia.armyParatroopers",
+        "path": "variable:RiziaDLC.Army_Unit_Paratrooper_Total",
+        "label": "Army Units: Paratroopers",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Total paratrooper army units"
+    },
+    {
+        "id": "rizia.armyMercenaries",
+        "path": "variable:RiziaDLC.Army_Unit_Mercenary_Total",
+        "label": "Army Units: Mercenaries",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Total mercenary army units"
+    },
+    {
+        "id": "rizia.armyAzaro",
+        "path": "variable:RiziaDLC.Army_Unit_Azaro_Total",
+        "label": "Army Units: Azaro",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Total Azaro army units"
+    },
+    {
+        "id": "rizia.armySazon",
+        "path": "variable:RiziaDLC.Army_Unit_Sazon_Total",
+        "label": "Army Units: Sazon",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Total Sazon army units"
+    },
+    {
+        "id": "rizia.armyGoldenGuard",
+        "path": "variable:RiziaDLC.Army_Unit_GoldenGuard_Total",
+        "label": "Army Units: Golden Guard",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Total Golden Guard army units"
+    },
+    {
+        "id": "rizia.armyMountaineers",
+        "path": "variable:RiziaDLC.Army_Unit_Mountaineer_Total",
+        "label": "Army Units: Mountaineers",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Total mountaineer army units"
+    },
+    {
+        "id": "rizia.armyMilitia",
+        "path": "variable:RiziaDLC.Army_Unit_Militia_Total",
+        "label": "Army Units: Militia",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Total militia army units"
+    },
+    {
+        "id": "rizia.armyTanks",
+        "path": "variable:RiziaDLC.Army_Unit_Tank_Total",
+        "label": "Army Units: Tanks",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Total tank army units"
+    },
+    {
+        "id": "rizia.armyInfantry",
+        "path": "variable:RiziaDLC.Army_Unit_Infantry_Total",
+        "label": "Army Units: Infantry",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Total infantry army units"
+    },
+    {
+        "id": "rizia.armySupport",
+        "path": "variable:RiziaDLC.Army_Unit_Support_Total",
+        "label": "Army Units: Support",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Total support army units"
+    },
+    {
+        "id": "rizia.opinionNobles",
+        "path": "variable:RiziaDLC.Opinion_Nobles",
+        "label": "Noble Opinion",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Nobility approval rating"
+    },
+    {
+        "id": "rizia.opinionMerchants",
+        "path": "variable:RiziaDLC.Opinion_Merchants",
+        "label": "Merchant Opinion",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Merchant class approval rating"
+    },
+    {
+        "id": "rizia.opinionPeasants",
+        "path": "variable:RiziaDLC.Opinion_Peasants",
+        "label": "Peasant Opinion",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Peasant class approval rating"
+    },
+    {
+        "id": "rizia.opinionClergy",
+        "path": "variable:RiziaDLC.Opinion_Clergy",
+        "label": "Clergy Opinion",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Clergy approval rating"
+    },
+    {
+        "id": "rizia.opinionMilitary",
+        "path": "variable:RiziaDLC.Opinion_Military",
+        "label": "Military Opinion",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Military approval rating"
+    },
+    {
+        "id": "rizia.houseToras",
+        "path": "variable:RiziaDLC.Country_HouseToras",
+        "label": "House Toras",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "House Toras influence level"
+    },
+    {
+        "id": "rizia.houseSazon",
+        "path": "variable:RiziaDLC.Country_HouseSazon",
+        "label": "House Sazon",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "House Sazon influence level"
+    },
+    {
+        "id": "rizia.houseAzaro",
+        "path": "variable:RiziaDLC.Country_HouseAzaro",
+        "label": "House Azaro",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "House Azaro influence level"
+    },
+    {
+        "id": "rizia.golcondistOpinion",
+        "path": "variable:RiziaDLC.Country_GolcondistOpinion",
+        "label": "Golcondist Opinion",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Golcondist faction opinion"
+    },
+    {
+        "id": "rizia.wruhecistOpinion",
+        "path": "variable:RiziaDLC.Country_WruhecistOpinion",
+        "label": "Wruhecist Opinion",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Wruhecist faction opinion"
+    },
+    {
+        "id": "rizia.dastnuristOpinion",
+        "path": "variable:RiziaDLC.Country_DastnuristOpinion",
+        "label": "Dastnurist Opinion",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Dastnurist faction opinion"
+    },
+    {
+        "id": "rizia.relationsHugo",
+        "path": "variable:RiziaDLC.Relations_Hugo",
+        "label": "Hugo Relations",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Personal relations with Hugo"
+    },
+    {
+        "id": "rizia.relationsSal",
+        "path": "variable:RiziaDLC.Relations_Sal",
+        "label": "Sal Relations",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Personal relations with Sal"
+    },
+    {
+        "id": "rizia.relationsEstela",
+        "path": "variable:RiziaDLC.Relations_Estela",
+        "label": "Estela Relations",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Personal relations with Estela"
+    },
+    {
+        "id": "rizia.relationsVina",
+        "path": "variable:RiziaDLC.Relations_Vina",
+        "label": "Vina Relations",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Personal relations with Vina"
+    },
+    {
+        "id": "rizia.relationsPabel",
+        "path": "variable:RiziaDLC.Relations_Pabel",
+        "label": "Pabel Relations",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Personal relations with Pabel"
+    },
+    {
+        "id": "rizia.relationsLucitaRomance",
+        "path": "variable:RiziaDLC.Relations_Lucita_Romance",
+        "label": "Lucita Romance",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Romance level with Lucita"
+    },
+    {
+        "id": "rizia.relationsTitus",
+        "path": "variable:RiziaDLC.Relations_Titus",
+        "label": "Titus Relations",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Personal relations with Titus"
+    },
+    {
+        "id": "rizia.economicGrowth",
+        "path": "variable:RiziaDLC.Country_EconomicGrowth",
+        "label": "Economic Growth",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Country economic growth level"
+    },
+    {
+        "id": "rizia.livingStandards",
+        "path": "variable:RiziaDLC.Country_LivingStandards",
+        "label": "Living Standards",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Country living standards level"
+    },
+    {
+        "id": "rizia.productionCapacity",
+        "path": "variable:RiziaDLC.Country_ProductionCapacity",
+        "label": "Production Capacity",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Country production capacity"
+    },
+    {
+        "id": "rizia.lateUnrest",
+        "path": "variable:RiziaDLC.Country_LateUnrest",
+        "label": "Late Unrest",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Late-game unrest level"
+    },
+    {
+        "id": "rizia.publicOpinion",
+        "path": "variable:RiziaDLC.Country_PublicOpinion",
+        "label": "Public Opinion",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Overall public opinion"
+    },
+    {
+        "id": "rizia.tourism",
+        "path": "variable:RiziaDLC.Country_Tourism",
+        "label": "Tourism",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Country tourism level"
+    },
+    {
+        "id": "rizia.izaAntiMonarchism",
+        "path": "variable:RiziaDLC.Iza_AntiMonarchism",
+        "label": "Iza Anti-Monarchism",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Iza anti-monarchism sentiment level"
+    },
+    {
+        "id": "rizia.vendonesam",
+        "path": "variable:RiziaDLC.Vendonesam_SupportLevel",
+        "label": "Vendonesam Support",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Vendonesam support level"
+    },
+    {
+        "id": "rizia.drugTrade",
+        "path": "variable:RiziaDLC.Country_DrugTrade",
+        "label": "Drug Trade",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Country drug trade level"
+    },
+    {
+        "id": "rizia.zilleViolentResistance",
+        "path": "variable:RiziaDLC.Zille_ViolentResistancePower",
+        "label": "Zille Violent Resistance",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Zille violent resistance power level"
+    },
+    {
+        "id": "rizia.zilleReferendumPower",
+        "path": "variable:RiziaDLC.Zille_ReferendumPower",
+        "label": "Zille Referendum Power",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Zille referendum power level"
+    },
+    {
+        "id": "rizia.zilleTreatyPromisesBroken",
+        "path": "variable:RiziaDLC.Turn08_ZilleNegotiations_TreatyPromisesBroken",
+        "label": "Zille Treaty Promises Broken",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Number of treaty promises broken during Zille negotiations"
+    },
+    {
+        "id": "rizia.diplomacySordland",
+        "path": "variable:RiziaDLC.Diplomacy_Sordland_NegotiatingPower",
+        "label": "Diplomacy: Sordland",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Negotiating power with Sordland"
+    },
+    {
+        "id": "rizia.diplomacyWehlen",
+        "path": "variable:RiziaDLC.Diplomacy_Wehlen_NegotiatingPower",
+        "label": "Diplomacy: Wehlen",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Negotiating power with Wehlen"
+    },
+    {
+        "id": "rizia.diplomacyDerdia",
+        "path": "variable:RiziaDLC.Diplomacy_Derdia_NegotiatingPower",
+        "label": "Diplomacy: Derdia",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Negotiating power with Derdia"
+    },
+    {
+        "id": "rizia.diplomacyPales",
+        "path": "variable:RiziaDLC.Diplomacy_Pales_NegotiatingPower",
+        "label": "Diplomacy: Pales",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Negotiating power with Pales"
+    },
+    {
+        "id": "rizia.diplomacyRumburg",
+        "path": "variable:RiziaDLC.Diplomacy_Rumburg_NegotiatingPower",
+        "label": "Diplomacy: Rumburg",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Negotiating power with Rumburg"
+    },
+    {
+        "id": "rizia.diplomacyValgsland",
+        "path": "variable:RiziaDLC.Diplomacy_Valgsland_NegotiatingPower",
+        "label": "Diplomacy: Valgsland",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Negotiating power with Valgsland"
+    },
+    {
+        "id": "rizia.diplomacyLespia",
+        "path": "variable:RiziaDLC.Diplomacy_Lespia_NegotiatingPower",
+        "label": "Diplomacy: Lespia",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Negotiating power with Lespia"
+    },
+    {
+        "id": "rizia.diplomacyMorella",
+        "path": "variable:RiziaDLC.Diplomacy_Morella_NegotiatingPower",
+        "label": "Diplomacy: Morella",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Negotiating power with Morella"
+    },
+    {
+        "id": "rizia.zilleReturnPoints",
+        "path": "variable:RiziaDLC.Turn08_ZilleNegotiations_ReturnPoints",
+        "label": "Zille Negotiations Return Points",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Return points from Zille negotiations"
+    },
+    {
+        "id": "rizia.personalTyrant",
+        "path": "variable:RiziaDLC.PersonalValue_Tyrant",
+        "label": "Personal Value: Tyrant",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Tyrant personal value score"
+    },
+    {
+        "id": "rizia.personalDrinking",
+        "path": "variable:RiziaDLC.PersonalValue_Drinking",
+        "label": "Personal Value: Drinking",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Drinking personal value score"
+    },
+    {
+        "id": "rizia.personalReligious",
+        "path": "variable:RiziaDLC.PersonalValue_Religious",
+        "label": "Personal Value: Religious",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Religious personal value score"
+    },
+    {
+        "id": "rizia.personalFunnyKing",
+        "path": "variable:RiziaDLC.PersonalValue_FunnyKing",
+        "label": "Personal Value: Funny King",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Funny king personal value score"
+    },
+    {
+        "id": "rizia.personalMalenyevist",
+        "path": "variable:RiziaDLC.PersonalValue_Malenyevist",
+        "label": "Personal Value: Malenyevist",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Malenyevist personal value score"
+    },
+    {
+        "id": "rizia.personalPacifist",
+        "path": "variable:RiziaDLC.PersonalValue_Pacifist",
+        "label": "Personal Value: Pacifist",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Pacifist personal value score"
+    },
+    {
+        "id": "rizia.personalBrokeTradition",
+        "path": "variable:RiziaDLC.PersonalValue_BrokeTradition",
+        "label": "Personal Value: Broke Tradition",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Broke tradition personal value score"
+    },
+    {
+        "id": "rizia.leaningDemocratic",
+        "path": "variable:RiziaDLC.LeaningValue_Democratic",
+        "label": "Leaning: Democratic",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Democratic leaning value"
+    },
+    {
+        "id": "rizia.leaningProBusiness",
+        "path": "variable:RiziaDLC.LeaningValue_ProBusiness",
+        "label": "Leaning: Pro-Business",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Pro-business leaning value"
+    },
+    {
+        "id": "rizia.relationsWehlen",
+        "path": "variable:RiziaDLC.Relations_Wehlen",
+        "label": "Wehlen Relations",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Diplomatic relations with Wehlen"
+    },
+    {
+        "id": "rizia.relationsLespia",
+        "path": "variable:RiziaDLC.Relations_Lespia",
+        "label": "Lespia Relations",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Diplomatic relations with Lespia"
+    },
+    {
+        "id": "rizia.relationsRumburg",
+        "path": "variable:RiziaDLC.Relations_Rumburg",
+        "label": "Rumburg Relations",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "Variable",
+        "description": "Diplomatic relations with Rumburg"
+    },
+    {
+        "id": "rizia.kingsSon",
+        "path": "variable:RiziaDLCText.KingsSon",
+        "label": "King's Son Name",
+        "group": "Rizia",
+        "type": "String",
+        "source": "Variable",
+        "description": "Name of the heir to the throne"
+    },
+    {
+        "id": "rizia.finalChapterTitle",
+        "path": "variable:RiziaDLCText.FinalChapterTitle",
+        "label": "Final Chapter Title",
+        "group": "Rizia",
+        "type": "String",
+        "source": "Variable"
+    },
+    {
+        "id": "rizia.lucitaTitle",
+        "path": "variable:RiziaDLCText.LucitaTitle",
+        "label": "Lucita's Title",
+        "group": "Rizia",
+        "type": "String",
+        "source": "Variable",
+        "description": "Lucita's official title in the government"
+    },
+    {
+        "id": "rizia.theocracyName",
+        "path": "variable:RiziaDLCText.TheocracyName",
+        "label": "Theocracy Name",
+        "group": "Rizia",
+        "type": "String",
+        "source": "Variable"
+    },
+    {
+        "id": "rizia.entityWehlenRelations",
+        "path": "entity:Rizia_Country_Wehlen.Relations",
+        "label": "Wehlen Entity Relations",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "EntityUpdate",
+        "description": "Entity-level relations value for Wehlen"
+    },
+    {
+        "id": "rizia.entityValgslandRelations",
+        "path": "entity:Rizia_Country_Valgsland.Relations",
+        "label": "Valgsland Entity Relations",
+        "group": "Rizia",
+        "type": "Int",
+        "source": "EntityUpdate",
+        "description": "Entity-level relations value for Valgsland"
+    },
+    {
+        "id": "rizia.hodComposition",
+        "path": "entity:Page_HouseOfDelegates.CurrentComposition",
+        "label": "House of Delegates Composition",
+        "group": "Rizia",
+        "type": "String",
+        "source": "EntityUpdate",
+        "description": "Current composition of the House of Delegates"
+    }
+]

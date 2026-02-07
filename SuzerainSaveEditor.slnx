@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="SuzerainSaveEditor.App/SuzerainSaveEditor.App.csproj" />
+  <Project Path="SuzerainSaveEditor.Core/SuzerainSaveEditor.Core.csproj" />
+  <Project Path="SuzerainSaveEditor.Tests/SuzerainSaveEditor.Tests.csproj" />
+</Solution>
