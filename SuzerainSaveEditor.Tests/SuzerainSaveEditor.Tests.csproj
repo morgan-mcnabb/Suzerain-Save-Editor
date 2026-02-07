@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\SuzerainSaveEditor.App\SuzerainSaveEditor.App.csproj" />
     <ProjectReference Include="..\SuzerainSaveEditor.Core\SuzerainSaveEditor.Core.csproj" />
   </ItemGroup>
 

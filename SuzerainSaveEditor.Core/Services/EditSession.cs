@@ -125,6 +125,7 @@ public sealed class EditSession : IEditSession
         {
             FieldType.Bool => ValidateBool(value),
             FieldType.Int => ValidateInt(field, value),
+            FieldType.Decimal => ValidateDecimal(value),
             FieldType.String => ValidationResult.Success,
             FieldType.Enum => ValidateEnum(field, value),
             _ => ValidationResult.Success
@@ -149,6 +150,13 @@ public sealed class EditSession : IEditSession
         if (field.Max.HasValue && intValue > field.Max.Value)
             return ValidationResult.Failure($"Value {intValue} exceeds maximum {field.Max.Value}.");
 
+        return ValidationResult.Success;
+    }
+
+    private static ValidationResult ValidateDecimal(string value)
+    {
+        if (!double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out _))
+            return ValidationResult.Failure($"'{value}' is not a valid number.");
         return ValidationResult.Success;
     }
 

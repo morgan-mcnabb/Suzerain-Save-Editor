@@ -99,4 +99,26 @@ public sealed class LuaValueTests
         LuaValue b = new LuaValue.Int(1);
         Assert.NotEqual(a, b);
     }
+
+    [Fact]
+    public void Num_ToLuaString_ReturnsRawValue()
+    {
+        var value = new LuaValue.Num("-1E+09");
+        Assert.Equal("-1E+09", value.ToLuaString());
+    }
+
+    [Fact]
+    public void Num_NumericValue_ReturnsCorrectDouble()
+    {
+        var value = new LuaValue.Num("-1E+09");
+        Assert.Equal(-1_000_000_000, value.NumericValue);
+    }
+
+    [Fact]
+    public void Num_RecordEquality_Works()
+    {
+        var a = new LuaValue.Num("-1E+09");
+        var b = new LuaValue.Num("-1E+09");
+        Assert.Equal(a, b);
+    }
 }

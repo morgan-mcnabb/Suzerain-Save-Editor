@@ -52,6 +52,7 @@ public sealed class FieldResolver : IFieldResolver
         {
             LuaValue.Bool b => b.Value.ToString(),
             LuaValue.Int i => i.Value.ToString(),
+            LuaValue.Num n => n.Raw,
             LuaValue.Str s => s.Value,
             null => null,
             _ => null
@@ -161,6 +162,7 @@ public sealed class FieldResolver : IFieldResolver
     {
         FieldType.Bool => new LuaValue.Bool(bool.Parse(value)),
         FieldType.Int => new LuaValue.Int(int.Parse(value)),
+        FieldType.Decimal => new LuaValue.Num(value),
         FieldType.String or FieldType.Enum => new LuaValue.Str(value),
         _ => throw new ArgumentOutOfRangeException(nameof(type), $"Unknown field type: {type}")
     };

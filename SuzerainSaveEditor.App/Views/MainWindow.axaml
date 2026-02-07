@@ -3,18 +3,278 @@
         xmlns:vm="using:SuzerainSaveEditor.App.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d" d:DesignWidth="950" d:DesignHeight="700"
         x:Class="SuzerainSaveEditor.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Icon="/Assets/avalonia-logo.ico"
-        Title="SuzerainSaveEditor.App">
+        Title="{Binding WindowTitle}"
+        Width="950" Height="700"
+        MinWidth="700" MinHeight="500">
+
+    <Window.KeyBindings>
+        <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenCommand}" />
+        <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveCommand}" />
+    </Window.KeyBindings>
+
+    <Window.Styles>
+        <!-- strip selection/hover visuals from field list boxes -->
+        <Style Selector="ListBox.field-list">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="ListBox.field-list ListBoxItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ContentPresenter Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}" />
+                </ControlTemplate>
+            </Setter>
+        </Style>
+    </Window.Styles>
 
     <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-    <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+    <Window.Resources>
+        <!-- reusable field editor template -->
+        <DataTemplate x:Key="FieldEditorTemplate" x:DataType="vm:FieldViewModel">
+            <Border Classes="field-row"
+                    Classes.field-row-dirty="{Binding IsDirty}">
+                <Grid ColumnDefinitions="220,*,Auto" RowDefinitions="Auto,Auto">
+                    <!-- label + description -->
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="{Binding Label}"
+                                   FontWeight="SemiBold"
+                                   FontSize="13"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Description}"
+                                   FontSize="11"
+                                   Opacity="0.45"
+                                   TextWrapping="Wrap"
+                                   IsVisible="{Binding HasDescription}"
+                                   Margin="0,2,0,0" />
+                    </StackPanel>
 
+                    <!-- editor controls (only one visible based on type) -->
+                    <Panel Grid.Column="1" VerticalAlignment="Center">
+                        <!-- bool -->
+                        <ToggleSwitch IsChecked="{Binding BoolValue}"
+                                      IsVisible="{Binding IsBool}"
+                                      OnContent="Yes" OffContent="No"
+                                      HorizontalAlignment="Left" />
+
+                        <!-- string / int -->
+                        <TextBox Text="{Binding Value, Mode=TwoWay}"
+                                 IsVisible="{Binding IsText}"
+                                 Watermark="{Binding Description}"
+                                 MinWidth="200" />
+
+                        <!-- enum -->
+                        <ComboBox ItemsSource="{Binding Options}"
+                                  SelectedItem="{Binding Value, Mode=TwoWay}"
+                                  IsVisible="{Binding IsEnum}"
+                                  MinWidth="200"
+                                  HorizontalAlignment="Left" />
+                    </Panel>
+
+                    <!-- dirty indicator dot -->
+                    <Ellipse Grid.Column="2"
+                             Width="8" Height="8"
+                             Margin="12,0,4,0"
+                             VerticalAlignment="Center"
+                             IsVisible="{Binding IsDirty}"
+                             ToolTip.Tip="Modified">
+                        <Ellipse.Fill>
+                            <SolidColorBrush Color="#F5A623" />
+                        </Ellipse.Fill>
+                    </Ellipse>
+
+                    <!-- validation error -->
+                    <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                               Text="{Binding ValidationError}"
+                               FontSize="11"
+                               Margin="0,4,0,0"
+                               IsVisible="{Binding HasValidationError}">
+                        <TextBlock.Foreground>
+                            <SolidColorBrush Color="#E74C3C" />
+                        </TextBlock.Foreground>
+                    </TextBlock>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Panel>
+        <!-- loading overlay -->
+        <Border IsVisible="{Binding IsLoading}"
+                Background="#80000000"
+                ZIndex="100"
+                IsHitTestVisible="True">
+            <StackPanel HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="12">
+                <ProgressBar IsIndeterminate="True"
+                             Width="220" />
+                <TextBlock Text="{Binding StatusMessage}"
+                           HorizontalAlignment="Center"
+                           Opacity="0.8" />
+            </StackPanel>
+        </Border>
+
+        <!-- main layout -->
+        <DockPanel>
+            <!-- toolbar -->
+            <Border DockPanel.Dock="Top" Classes="toolbar">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <StackPanel Grid.Column="0"
+                                Orientation="Horizontal"
+                                Spacing="6">
+                        <Button Command="{Binding OpenCommand}"
+                                Content="Open"
+                                Padding="16,8"
+                                ToolTip.Tip="Open a save file (Ctrl+O)" />
+                        <Button Command="{Binding SaveCommand}"
+                                Content="Save"
+                                Padding="16,8"
+                                Classes="accent"
+                                ToolTip.Tip="Save changes (Ctrl+S)" />
+                        <Button Command="{Binding RevertAllCommand}"
+                                Content="Revert All"
+                                Padding="16,8"
+                                ToolTip.Tip="Discard all unsaved changes" />
+                    </StackPanel>
+
+                    <TextBox Grid.Column="2"
+                             Text="{Binding SearchText, Mode=TwoWay}"
+                             Watermark="Search fields..."
+                             Width="250"
+                             VerticalAlignment="Center" />
+                </Grid>
+            </Border>
+
+            <!-- status bar -->
+            <Border DockPanel.Dock="Bottom" Classes="statusbar">
+                <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+                    <!-- file path / status -->
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding StatusMessage}"
+                               FontSize="12"
+                               Opacity="0.6"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" />
+
+                    <!-- change count -->
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding ChangeCountText}"
+                               FontSize="12"
+                               Margin="16,0"
+                               Opacity="0.6"
+                               VerticalAlignment="Center"
+                               IsVisible="{Binding IsFileLoaded}" />
+
+                    <!-- separator -->
+                    <TextBlock Grid.Column="2"
+                               Text="|"
+                               FontSize="12"
+                               Opacity="0.3"
+                               Margin="0,0,16,0"
+                               VerticalAlignment="Center"
+                               IsVisible="{Binding IsFileLoaded}" />
+
+                    <!-- validation status (green when valid, red when errors) -->
+                    <Panel Grid.Column="3"
+                           VerticalAlignment="Center"
+                           IsVisible="{Binding IsFileLoaded}">
+                        <TextBlock Text="Valid"
+                                   FontSize="12"
+                                   IsVisible="{Binding !HasValidationErrors}">
+                            <TextBlock.Foreground>
+                                <SolidColorBrush Color="#7ED321" />
+                            </TextBlock.Foreground>
+                        </TextBlock>
+                        <TextBlock Text="{Binding ValidationStatusText}"
+                                   FontSize="12"
+                                   IsVisible="{Binding HasValidationErrors}">
+                            <TextBlock.Foreground>
+                                <SolidColorBrush Color="#E74C3C" />
+                            </TextBlock.Foreground>
+                        </TextBlock>
+                    </Panel>
+                </Grid>
+            </Border>
+
+            <!-- content area -->
+            <Panel>
+                <!-- empty state: no file loaded -->
+                <StackPanel IsVisible="{Binding !IsFileLoaded}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Spacing="12"
+                            Margin="0,0,0,48">
+                    <TextBlock Text="Suzerain Save Editor"
+                               Classes="welcome-title" />
+                    <TextBlock Text="Open a save file to begin editing"
+                               Classes="welcome-subtitle"
+                               Margin="0,0,0,8" />
+                    <Button Command="{Binding OpenCommand}"
+                            Content="Open Save File"
+                            HorizontalAlignment="Center"
+                            Padding="28,12"
+                            FontSize="14"
+                            Classes="accent" />
+                    <TextBlock Text="Supports Suzerain and Rizia DLC save files (.json)"
+                               Classes="welcome-subtitle"
+                               FontSize="12"
+                               Margin="0,12,0,0" />
+                </StackPanel>
+
+                <!-- loaded state: grouped tabs -->
+                <TabControl IsVisible="{Binding IsFileLoaded}"
+                            SelectedIndex="{Binding SelectedGroupIndex}"
+                            Padding="0"
+                            Margin="0">
+                    <TabItem Header="General" Padding="16,8">
+                        <ListBox Classes="field-list"
+                                 ItemsSource="{Binding GeneralFields}"
+                                 ItemTemplate="{StaticResource FieldEditorTemplate}"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 Padding="8,4" />
+                    </TabItem>
+
+                    <TabItem Header="Sordland" Padding="16,8">
+                        <ListBox Classes="field-list"
+                                 ItemsSource="{Binding SordlandFields}"
+                                 ItemTemplate="{StaticResource FieldEditorTemplate}"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 Padding="8,4" />
+                    </TabItem>
+
+                    <TabItem Header="Rizia" Padding="16,8">
+                        <ListBox Classes="field-list"
+                                 ItemsSource="{Binding RiziaFields}"
+                                 ItemTemplate="{StaticResource FieldEditorTemplate}"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 Padding="8,4" />
+                    </TabItem>
+
+                    <TabItem Padding="16,8">
+                        <TabItem.Header>
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <TextBlock Text="Advanced" />
+                                <TextBlock Text="{Binding AdvancedFieldCount, StringFormat='({0})'}"
+                                           Opacity="0.6" />
+                            </StackPanel>
+                        </TabItem.Header>
+                        <ListBox Classes="field-list"
+                                 ItemsSource="{Binding AdvancedFields}"
+                                 ItemTemplate="{StaticResource FieldEditorTemplate}"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 Padding="8,4" />
+                    </TabItem>
+                </TabControl>
+            </Panel>
+        </DockPanel>
+    </Panel>
 </Window>

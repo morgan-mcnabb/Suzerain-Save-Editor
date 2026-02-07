@@ -5,5 +5,6 @@ public enum FieldType
     Bool,
     Int,
     String,
-    Enum
+    Enum,
+    Decimal
 }

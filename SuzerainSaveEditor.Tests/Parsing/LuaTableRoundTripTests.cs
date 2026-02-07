@@ -113,4 +113,14 @@ public sealed class LuaTableRoundTripTests
 
         Assert.StartsWith("GameCondition.", result[0].Key);
     }
+
+    [Fact]
+    public void Parse_ScientificNotation_RoundTripsExactly()
+    {
+        var input = "Variable={[\"a\"]=true, [\"b\"]=-1E+09, [\"c\"]=42}; ";
+        var parsed = LuaTableParser.Parse(input);
+        var serialized = LuaTableSerializer.Serialize(parsed);
+
+        Assert.Equal(input, serialized);
+    }
 }

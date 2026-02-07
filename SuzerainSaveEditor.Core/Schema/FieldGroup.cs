@@ -4,5 +4,6 @@ public enum FieldGroup
 {
     General,
     Sordland,
-    Rizia
+    Rizia,
+    Advanced
 }

@@ -10,6 +10,38 @@ public sealed class EditSessionTests
     private readonly ISchemaService _schema = new SchemaService();
     private readonly IFieldResolver _resolver = new FieldResolver();
 
+    // wraps the real schema but overrides governmentBudget to include min/max for validation tests
+    private ISchemaService SchemaWithMinMax()
+    {
+        var overridden = new FieldDefinition
+        {
+            Id = "sordland.governmentBudget",
+            Path = "variable:BaseGame.GovernmentBudget",
+            Label = "Government Budget",
+            Group = FieldGroup.Sordland,
+            Type = FieldType.Int,
+            Source = FieldSource.Variable,
+            Min = -10,
+            Max = 10
+        };
+        return new OverridingSchemaService(_schema, overridden);
+    }
+
+    private EditSession CreateSessionWithMinMax(SaveDocument? doc = null)
+    {
+        return new EditSession(doc ?? CreateTestDocument(), null, SchemaWithMinMax(), _resolver);
+    }
+
+    // test helper that replaces a single field by id in the wrapped schema
+    private sealed class OverridingSchemaService(ISchemaService inner, FieldDefinition overrideField) : ISchemaService
+    {
+        public IReadOnlyList<FieldDefinition> GetAll() => inner.GetAll().Select(f => Resolve(f)!).ToList();
+        public IReadOnlyList<FieldDefinition> GetByGroup(FieldGroup group) => inner.GetByGroup(group).Select(f => Resolve(f)!).ToList();
+        public FieldDefinition? GetById(string id) => Resolve(inner.GetById(id));
+        public IReadOnlyList<FieldDefinition> Search(string query) => inner.Search(query).Select(f => Resolve(f)!).ToList();
+        private FieldDefinition? Resolve(FieldDefinition? f) => f?.Id == overrideField.Id ? overrideField : f;
+    }
+
     private static SaveDocument CreateTestDocument() => new()
     {
         Metadata = new SaveMetadata(
@@ -310,7 +342,7 @@ public sealed class EditSessionTests
     [Fact]
     public void SetValue_BelowMin_ReturnsError()
     {
-        var session = CreateSession();
+        var session = CreateSessionWithMinMax();
         var result = session.SetValue("sordland.governmentBudget", "-11");
 
         Assert.False(result.IsValid);
@@ -320,7 +352,7 @@ public sealed class EditSessionTests
     [Fact]
     public void SetValue_AboveMax_ReturnsError()
     {
-        var session = CreateSession();
+        var session = CreateSessionWithMinMax();
         var result = session.SetValue("sordland.governmentBudget", "11");
 
         Assert.False(result.IsValid);
@@ -330,7 +362,7 @@ public sealed class EditSessionTests
     [Fact]
     public void SetValue_AtMin_Succeeds()
     {
-        var session = CreateSession();
+        var session = CreateSessionWithMinMax();
         var result = session.SetValue("sordland.governmentBudget", "-10");
 
         Assert.True(result.IsValid);
@@ -339,7 +371,7 @@ public sealed class EditSessionTests
     [Fact]
     public void SetValue_AtMax_Succeeds()
     {
-        var session = CreateSession();
+        var session = CreateSessionWithMinMax();
         var result = session.SetValue("sordland.governmentBudget", "10");
 
         Assert.True(result.IsValid);

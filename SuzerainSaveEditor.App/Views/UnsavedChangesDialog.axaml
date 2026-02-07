@@ -1,0 +1,30 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SuzerainSaveEditor.App.Views.UnsavedChangesDialog"
+        Title="Unsaved Changes"
+        Width="420"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        SizeToContent="Height">
+
+    <StackPanel Margin="24,20,24,24" Spacing="20">
+        <TextBlock Text="You have unsaved changes. What would you like to do?"
+                   TextWrapping="Wrap"
+                   FontSize="14" />
+
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="8">
+            <Button Content="Cancel"
+                    Padding="16,8"
+                    Click="OnCancel" />
+            <Button Content="Discard"
+                    Padding="16,8"
+                    Click="OnDiscard" />
+            <Button Content="Save"
+                    Padding="16,8"
+                    Classes="accent"
+                    Click="OnSave" />
+        </StackPanel>
+    </StackPanel>
+</Window>

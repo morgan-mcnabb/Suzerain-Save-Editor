@@ -109,7 +109,7 @@ public static class LuaTableParser
             return (new LuaValue.Str(value), pos);
         }
 
-        // numeric value (possibly negative)
+        // numeric value (possibly negative, possibly scientific notation)
         if (ch == '-' || char.IsDigit(ch))
         {
             var numStart = pos;
@@ -121,6 +121,18 @@ public static class LuaTableParser
 
             if (pos == numStart || (ch == '-' && pos == numStart + 1))
                 throw new FormatException($"Invalid numeric value at position {Prefix.Length + numStart}.");
+
+            // check for scientific notation (e.g. -1E+09)
+            if (pos < body.Length && (body[pos] == 'E' || body[pos] == 'e'))
+            {
+                pos++; // skip E/e
+                if (pos < body.Length && (body[pos] == '+' || body[pos] == '-'))
+                    pos++; // skip +/-
+                while (pos < body.Length && char.IsDigit(body[pos]))
+                    pos++;
+                var raw = body[numStart..pos].ToString();
+                return (new LuaValue.Num(raw), pos);
+            }
 
             var numStr = body[numStart..pos];
             if (!int.TryParse(numStr, out var intValue))

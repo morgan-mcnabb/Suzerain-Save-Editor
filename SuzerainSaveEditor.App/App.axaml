@@ -2,14 +2,60 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="SuzerainSaveEditor.App.App"
              xmlns:local="using:SuzerainSaveEditor.App"
-             RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+             RequestedThemeVariant="Dark">
 
     <Application.DataTemplates>
         <local:ViewLocator/>
     </Application.DataTemplates>
-  
+
     <Application.Styles>
         <FluentTheme />
+
+        <!-- field row: subtle bottom border separator -->
+        <Style Selector="Border.field-row">
+            <Setter Property="Padding" Value="16,10" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Border.field-row:pointerover">
+            <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+        </Style>
+
+        <!-- dirty field row gets a left accent bar -->
+        <Style Selector="Border.field-row-dirty">
+            <Setter Property="BorderBrush" Value="#F5A623" />
+            <Setter Property="BorderThickness" Value="3,0,0,1" />
+        </Style>
+
+        <!-- toolbar area -->
+        <Style Selector="Border.toolbar">
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="Background" Value="{DynamicResource SolidBackgroundFillColorTertiaryBrush}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+        </Style>
+
+        <!-- status bar -->
+        <Style Selector="Border.statusbar">
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="Background" Value="{DynamicResource SolidBackgroundFillColorTertiaryBrush}" />
+            <Setter Property="BorderThickness" Value="0,1,0,0" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+        </Style>
+
+        <!-- welcome title -->
+        <Style Selector="TextBlock.welcome-title">
+            <Setter Property="FontSize" Value="32" />
+            <Setter Property="FontWeight" Value="Light" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Opacity" Value="0.9" />
+        </Style>
+
+        <Style Selector="TextBlock.welcome-subtitle">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Opacity" Value="0.45" />
+        </Style>
     </Application.Styles>
 </Application>

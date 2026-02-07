@@ -206,4 +206,69 @@ public sealed class LuaTableParserTests
         Assert.Equal(new LuaValue.Str(""), result[4].Value);
         Assert.Equal(new LuaValue.Bool(false), result[5].Value);
     }
+
+    [Fact]
+    public void Parse_ScientificNotation_Positive_ReturnsNumValue()
+    {
+        var result = LuaTableParser.Parse("Variable={[\"big\"]=1E+09}; ");
+
+        Assert.Single(result);
+        var num = Assert.IsType<LuaValue.Num>(result[0].Value);
+        Assert.Equal("1E+09", num.Raw);
+        Assert.Equal(1_000_000_000, num.NumericValue);
+    }
+
+    [Fact]
+    public void Parse_ScientificNotation_Negative_ReturnsNumValue()
+    {
+        var result = LuaTableParser.Parse("Variable={[\"sentinel\"]=-1E+09}; ");
+
+        Assert.Single(result);
+        var num = Assert.IsType<LuaValue.Num>(result[0].Value);
+        Assert.Equal("-1E+09", num.Raw);
+        Assert.Equal(-1_000_000_000, num.NumericValue);
+    }
+
+    [Fact]
+    public void Parse_ScientificNotation_LowercaseE_ReturnsNumValue()
+    {
+        var result = LuaTableParser.Parse("Variable={[\"val\"]=5e+03}; ");
+
+        Assert.Single(result);
+        var num = Assert.IsType<LuaValue.Num>(result[0].Value);
+        Assert.Equal("5e+03", num.Raw);
+        Assert.Equal(5000, num.NumericValue);
+    }
+
+    [Fact]
+    public void Parse_ScientificNotation_NegativeExponent_ReturnsNumValue()
+    {
+        var result = LuaTableParser.Parse("Variable={[\"tiny\"]=1E-03}; ");
+
+        Assert.Single(result);
+        var num = Assert.IsType<LuaValue.Num>(result[0].Value);
+        Assert.Equal("1E-03", num.Raw);
+        Assert.Equal(0.001, num.NumericValue, 6);
+    }
+
+    [Fact]
+    public void Parse_ScientificNotation_PreservesRawFormat()
+    {
+        var result = LuaTableParser.Parse("Variable={[\"x\"]=-1E+09}; ");
+
+        var num = Assert.IsType<LuaValue.Num>(result[0].Value);
+        Assert.Equal("-1E+09", num.ToLuaString());
+    }
+
+    [Fact]
+    public void Parse_ScientificNotation_MixedWithOtherTypes()
+    {
+        var input = "Variable={[\"flag\"]=true, [\"big\"]=-1E+09, [\"count\"]=5}; ";
+        var result = LuaTableParser.Parse(input);
+
+        Assert.Equal(3, result.Count);
+        Assert.IsType<LuaValue.Bool>(result[0].Value);
+        Assert.IsType<LuaValue.Num>(result[1].Value);
+        Assert.IsType<LuaValue.Int>(result[2].Value);
+    }
 }
