@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SuzerainSaveEditor.App.Services;
@@ -32,15 +31,15 @@ public partial class MainWindowViewModel : ViewModelBase
     private const int SearchDebounceMs = 250;
 
     // observable collections bound to UI (filtered by search)
-    public ObservableCollection<FieldViewModel> GeneralFields { get; } = [];
-    public ObservableCollection<FieldViewModel> SordlandFields { get; } = [];
-    public ObservableCollection<FieldViewModel> RiziaFields { get; } = [];
+    public BatchObservableCollection<FieldViewModel> GeneralFields { get; } = new();
+    public BatchObservableCollection<FieldViewModel> SordlandFields { get; } = new();
+    public BatchObservableCollection<FieldViewModel> RiziaFields { get; } = new();
 
     // tree navigation for advanced tab
-    public ObservableCollection<CategoryNodeViewModel> CategoryNodes { get; } = [];
-    public ObservableCollection<FieldViewModel> SelectedCategoryFields { get; } = [];
-    public ObservableCollection<SubCategorySummaryViewModel> SubCategorySummaries { get; } = [];
-    public ObservableCollection<BreadcrumbItem> BreadcrumbItems { get; } = [];
+    public BatchObservableCollection<CategoryNodeViewModel> CategoryNodes { get; } = new();
+    public BatchObservableCollection<FieldViewModel> SelectedCategoryFields { get; } = new();
+    public BatchObservableCollection<SubCategorySummaryViewModel> SubCategorySummaries { get; } = new();
+    public BatchObservableCollection<BreadcrumbItem> BreadcrumbItems { get; } = new();
 
     [ObservableProperty]
     private bool _isFileLoaded;
@@ -421,12 +420,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void PopulateSelectedCategoryContent()
     {
-        SelectedCategoryFields.Clear();
-        SubCategorySummaries.Clear();
-        BreadcrumbItems.Clear();
-
         if (SelectedCategory is null)
         {
+            SelectedCategoryFields.Clear();
+            SubCategorySummaries.Clear();
+            BreadcrumbItems.Clear();
             HasCategorySelected = false;
             ShowCategoryCards = false;
             ShowCategoryFields = false;
@@ -447,8 +445,8 @@ public partial class MainWindowViewModel : ViewModelBase
             ShowCategoryFields = false;
 
             var summaries = SelectedCategory.GetSubCategorySummaries(query);
-            foreach (var summary in summaries)
-                SubCategorySummaries.Add(summary);
+            SubCategorySummaries.ReplaceAll(summaries);
+            SelectedCategoryFields.Clear();
         }
         else
         {
@@ -457,26 +455,27 @@ public partial class MainWindowViewModel : ViewModelBase
             ShowCategoryFields = true;
 
             var fields = SelectedCategory.GetFilteredFields(query);
-            foreach (var field in fields)
-                SelectedCategoryFields.Add(field);
+            SelectedCategoryFields.ReplaceAll(fields);
+            SubCategorySummaries.Clear();
         }
     }
 
     private void BuildBreadcrumbItems(CategoryNodeViewModel node)
     {
         // walk up to root, collect ancestors
-        var segments = new List<CategoryNodeViewModel>();
+        var segments = new List<BreadcrumbItem>();
         var current = node;
         while (current is not null)
         {
-            segments.Add(current);
+            segments.Add(new BreadcrumbItem(current.Label, current, false));
             current = current.Parent;
         }
 
         segments.Reverse();
+        if (segments.Count > 0)
+            segments[^1] = segments[^1] with { IsLast = true };
 
-        for (var i = 0; i < segments.Count; i++)
-            BreadcrumbItems.Add(new BreadcrumbItem(segments[i].Label, segments[i], i == segments.Count - 1));
+        BreadcrumbItems.ReplaceAll(segments);
     }
 
     private void OnFieldValueChanged(string fieldId, string value)
@@ -539,21 +538,27 @@ public partial class MainWindowViewModel : ViewModelBase
         ApplyFilterToCategoryTree();
     }
 
-    private void ApplyFilterToGroup(List<FieldViewModel> source, ObservableCollection<FieldViewModel> target)
+    private void ApplyFilterToGroup(List<FieldViewModel> source, BatchObservableCollection<FieldViewModel> target)
     {
-        target.Clear();
         var query = SearchText?.Trim() ?? "";
 
+        if (string.IsNullOrEmpty(query))
+        {
+            target.ReplaceAll(source);
+            return;
+        }
+
+        var filtered = new List<FieldViewModel>();
         foreach (var field in source)
         {
-            if (string.IsNullOrEmpty(query) ||
-                field.Label.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+            if (field.Label.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                 field.FieldId.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                 (field.Description?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false))
             {
-                target.Add(field);
+                filtered.Add(field);
             }
         }
+        target.ReplaceAll(filtered);
     }
 
     private void ApplyFilterToCategoryTree()
@@ -561,24 +566,26 @@ public partial class MainWindowViewModel : ViewModelBase
         var query = SearchText?.Trim() ?? "";
         var isSearching = !string.IsNullOrEmpty(query);
 
-        // capture selection before clearing — Clear() triggers the TreeView
+        // capture selection before replacing — Reset triggers the TreeView
         // two-way binding to write null back into SelectedCategory
         var savedSelection = SelectedCategory;
+
+        var visible = new List<CategoryNodeViewModel>();
+        foreach (var node in _allCategoryNodes)
+        {
+            node.ApplyFilter(query);
+            if (node.IsVisible)
+            {
+                if (isSearching)
+                    node.IsExpanded = true;
+                visible.Add(node);
+            }
+        }
 
         _suppressCategoryChanged = true;
         try
         {
-            CategoryNodes.Clear();
-            foreach (var node in _allCategoryNodes)
-            {
-                node.ApplyFilter(query);
-                if (node.IsVisible)
-                {
-                    if (isSearching)
-                        node.IsExpanded = true;
-                    CategoryNodes.Add(node);
-                }
-            }
+            CategoryNodes.ReplaceAll(visible);
 
             // restore or clear selection based on visibility
             if (savedSelection is not null && savedSelection.IsVisible)

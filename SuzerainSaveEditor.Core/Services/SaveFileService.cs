@@ -45,7 +45,14 @@ public sealed class SaveFileService : ISaveFileService
         var tempPath = filePath + ".tmp";
         try
         {
-            await File.WriteAllTextAsync(tempPath, text);
+            await using (var fs = new FileStream(tempPath, FileMode.Create, FileAccess.Write,
+                FileShare.None, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan))
+            await using (var writer = new StreamWriter(fs))
+            {
+                await writer.WriteAsync(text);
+                await writer.FlushAsync();
+                await fs.FlushAsync();
+            }
 
             if (File.Exists(filePath))
                 File.Replace(tempPath, filePath, null);

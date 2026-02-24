@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace SuzerainSaveEditor.App.ViewModels;
@@ -15,7 +14,7 @@ public partial class CategoryNodeViewModel : ViewModelBase
     public CategoryNodeViewModel? Parent { get; internal set; }
 
     // children visible in the tree (filtered)
-    public ObservableCollection<CategoryNodeViewModel> Children { get; } = [];
+    public BatchObservableCollection<CategoryNodeViewModel> Children { get; } = new();
 
     // total field count including all descendants
     public int TotalCount { get; }
@@ -99,8 +98,7 @@ public partial class CategoryNodeViewModel : ViewModelBase
         _allFields = fields;
         _allChildren = children;
 
-        foreach (var child in children)
-            Children.Add(child);
+        Children.ReplaceAll(children);
 
         // total count = own fields + sum of children's totals
         TotalCount = _allFields.Count + _allChildren.Sum(c => c.TotalCount);
@@ -115,11 +113,7 @@ public partial class CategoryNodeViewModel : ViewModelBase
             // no filter — restore all children and full count
             // skip collection rebuild if already showing all children to avoid unnecessary UI re-layout
             if (Children.Count != _allChildren.Count)
-            {
-                Children.Clear();
-                foreach (var child in _allChildren)
-                    Children.Add(child);
-            }
+                Children.ReplaceAll(_allChildren);
 
             foreach (var child in _allChildren)
                 child.ApplyFilter(query);
@@ -131,25 +125,22 @@ public partial class CategoryNodeViewModel : ViewModelBase
         }
 
         // filter children first
-        var anyChildMatch = false;
-        Children.Clear();
+        var visibleChildren = new List<CategoryNodeViewModel>();
         foreach (var child in _allChildren)
         {
             if (child.ApplyFilter(query))
-            {
-                anyChildMatch = true;
-                Children.Add(child);
-            }
+                visibleChildren.Add(child);
         }
+        Children.ReplaceAll(visibleChildren);
 
         // count matching leaf fields
         var matchingFieldCount = _allFields.Count(f => FieldMatchesQuery(f, query));
 
         // sum up filtered counts from visible children
-        var childFilteredCount = Children.Sum(c => c.FilteredCount);
+        var childFilteredCount = visibleChildren.Sum(c => c.FilteredCount);
         FilteredCount = matchingFieldCount + childFilteredCount;
 
-        IsVisible = matchingFieldCount > 0 || anyChildMatch;
+        IsVisible = matchingFieldCount > 0 || visibleChildren.Count > 0;
         OnPropertyChanged(nameof(HeaderText));
         return IsVisible;
     }
