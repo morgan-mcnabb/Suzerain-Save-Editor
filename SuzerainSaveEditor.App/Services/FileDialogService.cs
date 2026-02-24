@@ -26,10 +26,17 @@ public sealed class FileDialogService : IFileDialogService
         {
             if (Directory.Exists(candidatePath))
             {
-                suggestedFolder = await _window.StorageProvider
-                    .TryGetFolderFromPathAsync(candidatePath);
-                if (suggestedFolder is not null)
-                    break;
+                try
+                {
+                    suggestedFolder = await _window.StorageProvider
+                        .TryGetFolderFromPathAsync(candidatePath);
+                    if (suggestedFolder is not null)
+                        break;
+                }
+                catch
+                {
+                    // permission or platform issue — skip this candidate
+                }
             }
         }
 
