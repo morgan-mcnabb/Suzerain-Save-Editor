@@ -1,28 +1,37 @@
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
+using SuzerainSaveEditor.Core.Services;
 
 namespace SuzerainSaveEditor.App.Services;
 
 public sealed class FileDialogService : IFileDialogService
 {
     private readonly Window _window;
+    private readonly ISavePathProvider _savePathProvider;
 
-    public FileDialogService(Window window)
+    public FileDialogService(Window window, ISavePathProvider savePathProvider)
     {
         ArgumentNullException.ThrowIfNull(window);
+        ArgumentNullException.ThrowIfNull(savePathProvider);
         _window = window;
+        _savePathProvider = savePathProvider;
     }
 
     public async Task<string?> OpenFileAsync()
     {
-        var suzerainSavePath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "Low",
-            "Torpor Games",
-            "Suzerain");
-
         IStorageFolder? suggestedFolder = null;
-        if (Directory.Exists(suzerainSavePath))
-            suggestedFolder = await _window.StorageProvider.TryGetFolderFromPathAsync(suzerainSavePath);
+
+        // try each candidate save directory in priority order
+        foreach (var candidatePath in _savePathProvider.GetSaveDirectories())
+        {
+            if (Directory.Exists(candidatePath))
+            {
+                suggestedFolder = await _window.StorageProvider
+                    .TryGetFolderFromPathAsync(candidatePath);
+                if (suggestedFolder is not null)
+                    break;
+            }
+        }
 
         var files = await _window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
