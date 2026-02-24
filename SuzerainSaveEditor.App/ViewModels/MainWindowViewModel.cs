@@ -23,12 +23,18 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly List<FieldViewModel> _allSordlandFields = [];
     private readonly List<FieldViewModel> _allRiziaFields = [];
     private readonly List<FieldViewModel> _allAdvancedFields = [];
+    private readonly List<CategoryNodeViewModel> _allCategoryNodes = [];
 
     // observable collections bound to UI (filtered by search)
     public ObservableCollection<FieldViewModel> GeneralFields { get; } = [];
     public ObservableCollection<FieldViewModel> SordlandFields { get; } = [];
     public ObservableCollection<FieldViewModel> RiziaFields { get; } = [];
-    public ObservableCollection<FieldViewModel> AdvancedFields { get; } = [];
+
+    // tree navigation for advanced tab
+    public ObservableCollection<CategoryNodeViewModel> CategoryNodes { get; } = [];
+    public ObservableCollection<FieldViewModel> SelectedCategoryFields { get; } = [];
+    public ObservableCollection<SubCategorySummaryViewModel> SubCategorySummaries { get; } = [];
+    public ObservableCollection<BreadcrumbItem> BreadcrumbItems { get; } = [];
 
     [ObservableProperty]
     private bool _isFileLoaded;
@@ -65,6 +71,21 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private int _advancedFieldCount;
+
+    [ObservableProperty]
+    private CategoryNodeViewModel? _selectedCategory;
+
+    [ObservableProperty]
+    private string _selectedCategoryPath = "";
+
+    [ObservableProperty]
+    private bool _hasCategorySelected;
+
+    [ObservableProperty]
+    private bool _showCategoryCards;
+
+    [ObservableProperty]
+    private bool _showCategoryFields;
 
     public string WindowTitle => IsFileLoaded
         ? $"Suzerain Save Editor \u2014 {Path.GetFileName(FilePath)}{(IsDirty ? " *" : "")}"
@@ -118,9 +139,14 @@ public partial class MainWindowViewModel : ViewModelBase
             // preserve tab selection and search, reload to reset dirty state
             var savedTab = SelectedGroupIndex;
             var savedSearch = SearchText;
+            var savedCategoryKey = SelectedCategory?.Key;
             await LoadFileAsync(_editSession.FilePath);
             SelectedGroupIndex = savedTab;
             SearchText = savedSearch;
+
+            // restore category selection
+            if (savedCategoryKey is not null)
+                SelectCategoryByKey(savedCategoryKey);
 
             StatusMessage = "Saved successfully";
         }
@@ -165,6 +191,40 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(WindowTitle));
     }
 
+    partial void OnSelectedCategoryChanged(CategoryNodeViewModel? oldValue, CategoryNodeViewModel? newValue)
+    {
+        if (oldValue is not null)
+            oldValue.IsSelected = false;
+
+        if (newValue is not null)
+        {
+            newValue.IsSelected = true;
+
+            // auto-expand/collapse parent nodes when selected
+            if (newValue.IsParent)
+                newValue.IsExpanded = !newValue.IsExpanded;
+        }
+
+        PopulateSelectedCategoryContent();
+    }
+
+    public void SelectCategory(CategoryNodeViewModel? node)
+    {
+        SelectedCategory = node;
+    }
+
+    [RelayCommand]
+    private void NavigateToSubCategory(SubCategorySummaryViewModel card)
+    {
+        SelectCategory(card.TargetNode);
+    }
+
+    [RelayCommand]
+    private void NavigateToBreadcrumb(BreadcrumbItem item)
+    {
+        SelectCategory(item.Node);
+    }
+
     private async Task LoadFileAsync(string path)
     {
         try
@@ -202,6 +262,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _allSordlandFields.Clear();
         _allRiziaFields.Clear();
         _allAdvancedFields.Clear();
+        _allCategoryNodes.Clear();
 
         var schema = _activeSchema ?? _schemaService;
 
@@ -236,8 +297,138 @@ public partial class MainWindowViewModel : ViewModelBase
             }
         }
 
+        // build hierarchical category tree for advanced fields
+        BuildCategoryTree(schema);
+
         AdvancedFieldCount = _allAdvancedFields.Count;
+        SelectedCategory = null;
+        HasCategorySelected = false;
+        ShowCategoryCards = false;
+        ShowCategoryFields = false;
+        SelectedCategoryPath = "";
+        SelectedCategoryFields.Clear();
+        SubCategorySummaries.Clear();
         ApplyFilter();
+    }
+
+    private void BuildCategoryTree(ISchemaService schema)
+    {
+        // get field definitions for advanced fields
+        var advancedDefs = _allAdvancedFields
+            .Select(vm => schema.GetById(vm.FieldId))
+            .Where(d => d is not null)
+            .Cast<FieldDefinition>()
+            .ToList();
+
+        // build hierarchical categories
+        var categories = AdvancedFieldGrouper.GroupFieldsHierarchical(advancedDefs);
+
+        // map FieldDefinition → FieldViewModel for quick lookup
+        var vmLookup = _allAdvancedFields.ToDictionary(vm => vm.FieldId, StringComparer.Ordinal);
+
+        // convert FieldCategory tree → CategoryNodeViewModel tree
+        foreach (var category in categories)
+        {
+            var node = BuildCategoryNode(category, vmLookup, parent: null);
+            _allCategoryNodes.Add(node);
+        }
+    }
+
+    private static CategoryNodeViewModel BuildCategoryNode(
+        FieldCategory category,
+        Dictionary<string, FieldViewModel> vmLookup,
+        CategoryNodeViewModel? parent)
+    {
+        // resolve field VMs for this category's leaf fields
+        var fieldVms = new List<FieldViewModel>();
+        foreach (var def in category.Fields)
+        {
+            if (vmLookup.TryGetValue(def.Id, out var vm))
+                fieldVms.Add(vm);
+        }
+
+        // build children first with null parent (fixed up below)
+        var childNodes = new List<CategoryNodeViewModel>();
+        foreach (var childCategory in category.Children)
+        {
+            var childNode = BuildCategoryNode(childCategory, vmLookup, parent: null);
+            childNodes.Add(childNode);
+        }
+
+        // create node with actual children
+        var node = new CategoryNodeViewModel(
+            category.Key,
+            category.Label,
+            category.SortOrder,
+            fieldVms,
+            childNodes,
+            parent);
+
+        // fix up children's parent references to point to this node
+        foreach (var child in childNodes)
+            child.Parent = node;
+
+        return node;
+    }
+
+    private void PopulateSelectedCategoryContent()
+    {
+        SelectedCategoryFields.Clear();
+        SubCategorySummaries.Clear();
+        BreadcrumbItems.Clear();
+
+        if (SelectedCategory is null)
+        {
+            HasCategorySelected = false;
+            ShowCategoryCards = false;
+            ShowCategoryFields = false;
+            SelectedCategoryPath = "";
+            return;
+        }
+
+        HasCategorySelected = true;
+        SelectedCategoryPath = SelectedCategory.BreadcrumbPath;
+        BuildBreadcrumbItems(SelectedCategory);
+
+        var query = SearchText?.Trim() ?? "";
+
+        if (SelectedCategory.IsParent)
+        {
+            // parent node — show sub-category cards
+            ShowCategoryCards = true;
+            ShowCategoryFields = false;
+
+            var summaries = SelectedCategory.GetSubCategorySummaries(query);
+            foreach (var summary in summaries)
+                SubCategorySummaries.Add(summary);
+        }
+        else
+        {
+            // leaf node — show field editors
+            ShowCategoryCards = false;
+            ShowCategoryFields = true;
+
+            var fields = SelectedCategory.GetFilteredFields(query);
+            foreach (var field in fields)
+                SelectedCategoryFields.Add(field);
+        }
+    }
+
+    private void BuildBreadcrumbItems(CategoryNodeViewModel node)
+    {
+        // walk up to root, collect ancestors
+        var segments = new List<CategoryNodeViewModel>();
+        var current = node;
+        while (current is not null)
+        {
+            segments.Add(current);
+            current = current.Parent;
+        }
+
+        segments.Reverse();
+
+        for (var i = 0; i < segments.Count; i++)
+            BreadcrumbItems.Add(new BreadcrumbItem(segments[i].Label, segments[i], i == segments.Count - 1));
     }
 
     private void OnFieldValueChanged(string fieldId, string value)
@@ -294,7 +485,8 @@ public partial class MainWindowViewModel : ViewModelBase
         ApplyFilterToGroup(_allGeneralFields, GeneralFields);
         ApplyFilterToGroup(_allSordlandFields, SordlandFields);
         ApplyFilterToGroup(_allRiziaFields, RiziaFields);
-        ApplyFilterToGroup(_allAdvancedFields, AdvancedFields);
+        ApplyFilterToCategoryTree();
+        PopulateSelectedCategoryContent();
     }
 
     private void ApplyFilterToGroup(List<FieldViewModel> source, ObservableCollection<FieldViewModel> target)
@@ -312,6 +504,42 @@ public partial class MainWindowViewModel : ViewModelBase
                 target.Add(field);
             }
         }
+    }
+
+    private void ApplyFilterToCategoryTree()
+    {
+        var query = SearchText?.Trim() ?? "";
+        var isSearching = !string.IsNullOrEmpty(query);
+
+        CategoryNodes.Clear();
+        foreach (var node in _allCategoryNodes)
+        {
+            node.ApplyFilter(query);
+            if (node.IsVisible)
+            {
+                if (isSearching)
+                    node.IsExpanded = true;
+                CategoryNodes.Add(node);
+            }
+        }
+    }
+
+    private void SelectCategoryByKey(string key)
+    {
+        var node = FindNodeByKey(_allCategoryNodes, key);
+        if (node is not null)
+            SelectCategory(node);
+    }
+
+    private static CategoryNodeViewModel? FindNodeByKey(IEnumerable<CategoryNodeViewModel> nodes, string key)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.Key == key) return node;
+            var found = FindNodeByKey(node.Children, key);
+            if (found is not null) return found;
+        }
+        return null;
     }
 
     private FieldViewModel? FindFieldViewModel(string fieldId)

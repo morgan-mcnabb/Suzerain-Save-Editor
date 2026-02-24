@@ -1,12 +1,35 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using SuzerainSaveEditor.Core.Models;
 using SuzerainSaveEditor.Core.Schema;
 
 namespace SuzerainSaveEditor.Core.Services;
 
 // discovers unmapped fields in a save document and generates synthetic field definitions
-public sealed class FieldDiscoveryService(ISchemaService schemaService) : IFieldDiscoveryService
+public sealed partial class FieldDiscoveryService(ISchemaService schemaService) : IFieldDiscoveryService
 {
+    [GeneratedRegex(@"^GameCondition\.Turn(\d{2})_", RegexOptions.Compiled)]
+    private static partial Regex TurnPrefixRegex();
+
+    // category abbreviation codes found after the turn prefix
+    private static readonly Dictionary<string, string> CategoryNames = new(StringComparer.Ordinal)
+    {
+        ["LateBrief"] = "Late Brief",
+        ["Decision"] = "Decisions",
+        ["Personal"] = "Personal",
+        ["FPnT"] = "Foreign Policy & Treaties",
+        ["Bill"] = "Legislation",
+        ["EnT"] = "Economy & Trade",
+        ["InT"] = "Internal Affairs",
+        ["SnO"] = "Security & Order",
+        ["A"] = "General"
+    };
+
+    // sorted longest-first to avoid ambiguous prefix matches
+    private static readonly string[] CategoryPrefixes = CategoryNames.Keys
+        .OrderByDescending(k => k.Length)
+        .ToArray();
+
     public IReadOnlyList<FieldDefinition> DiscoverFields(SaveDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
@@ -23,15 +46,16 @@ public sealed class FieldDiscoveryService(ISchemaService schemaService) : IField
             if (mappedPaths.Contains(path))
                 continue;
 
+            var (label, description) = GenerateAdvancedLabelAndDescription(variable.Key);
             discovered.Add(new FieldDefinition
             {
                 Id = $"discovered.var.{variable.Key}",
                 Path = path,
-                Label = GenerateLabel(variable.Key),
+                Label = label,
                 Group = FieldGroup.Advanced,
                 Type = InferFieldType(variable.Value),
                 Source = FieldSource.Variable,
-                Description = $"Variable: {variable.Key}"
+                Description = description
             });
         }
 
@@ -54,6 +78,56 @@ public sealed class FieldDiscoveryService(ISchemaService schemaService) : IField
         }
 
         return discovered;
+    }
+
+    // generates a human-readable label and rich description for discovered variables
+    internal static (string Label, string Description) GenerateAdvancedLabelAndDescription(string key)
+    {
+        var turnMatch = TurnPrefixRegex().Match(key);
+        if (turnMatch.Success)
+        {
+            var turnNum = turnMatch.Groups[1].Value;
+            var afterTurn = key[turnMatch.Length..];
+
+            string? categoryLabel = null;
+            var eventPart = afterTurn;
+
+            foreach (var prefix in CategoryPrefixes)
+            {
+                if (afterTurn.StartsWith(prefix + "_", StringComparison.Ordinal))
+                {
+                    categoryLabel = CategoryNames[prefix];
+                    eventPart = afterTurn[(prefix.Length + 1)..];
+                    break;
+                }
+            }
+
+            var label = GenerateLabel(eventPart);
+            var descParts = $"Turn {turnNum}";
+            if (categoryLabel is not null)
+                descParts += $" > {categoryLabel}";
+            var description = $"{descParts} | {key}";
+
+            return (label, description);
+        }
+
+        // non-turn variable: strip namespace prefix for label
+        // for dot-namespaced keys, GenerateLabel already strips the namespace
+        // for underscore-namespaced keys (e.g. Opinion_OldGuard), strip the first segment
+        var lastDot = key.LastIndexOf('.');
+        if (lastDot < 0)
+        {
+            var firstUnderscore = key.IndexOf('_');
+            if (firstUnderscore >= 0)
+            {
+                var afterPrefix = key[(firstUnderscore + 1)..];
+                var label = GenerateLabel(afterPrefix);
+                return (label, $"Variable: {key}");
+            }
+        }
+
+        var generatedLabel = GenerateLabel(key);
+        return (generatedLabel, $"Variable: {key}");
     }
 
     // strips namespace prefix (text before last dot), replaces underscores

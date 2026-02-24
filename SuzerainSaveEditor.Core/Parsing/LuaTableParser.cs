@@ -2,9 +2,6 @@ using SuzerainSaveEditor.Core.Models;
 
 namespace SuzerainSaveEditor.Core.Parsing;
 
-/// <summary>
-/// parses lua table strings of the form: Variable={["key1"]=value1, ["key2"]=value2, ...};
-/// </summary>
 public static class LuaTableParser
 {
     private const string Prefix = "Variable={";

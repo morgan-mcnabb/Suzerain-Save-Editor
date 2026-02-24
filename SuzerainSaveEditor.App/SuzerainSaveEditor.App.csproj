@@ -6,7 +6,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\app-icon.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Product>Suzerain Save Editor</Product>
+    <Authors>Morgan McNabb</Authors>
+    <Description>A desktop application for editing Suzerain save files</Description>
+    <Copyright>Copyright (c) 2025 Morgan McNabb</Copyright>
+    <RepositoryUrl>https://github.com/morgan-mcnabb/Suzerain-Save-Editor</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>

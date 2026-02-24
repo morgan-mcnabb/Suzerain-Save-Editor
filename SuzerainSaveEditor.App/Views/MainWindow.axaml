@@ -6,7 +6,9 @@
         mc:Ignorable="d" d:DesignWidth="950" d:DesignHeight="700"
         x:Class="SuzerainSaveEditor.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/app-icon.ico"
         Title="{Binding WindowTitle}"
+        Background="{DynamicResource BgBase}"
         Width="950" Height="700"
         MinWidth="700" MinHeight="500">
 
@@ -31,6 +33,61 @@
                 </ControlTemplate>
             </Setter>
         </Style>
+
+        <!-- card button: remove default chrome, add hover effect -->
+        <Style Selector="Button.card-button">
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.card-button:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.card-button:pointerover > Border.sub-card">
+            <Setter Property="Background" Value="{DynamicResource BgHover}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderStrong}" />
+        </Style>
+
+        <!-- category tree item styling -->
+        <Style Selector="TreeView.category-tree">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="TreeView.category-tree TreeViewItem">
+            <Setter Property="Padding" Value="2,1" />
+        </Style>
+        <!-- suppress default TreeViewItem selection highlighting -->
+        <Style Selector="TreeView.category-tree TreeViewItem:selected /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="TreeView.category-tree TreeViewItem:pointerover /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+
+        <!-- tree node: hover -->
+        <Style Selector="Border.tree-node:pointerover">
+            <Setter Property="Background" Value="{DynamicResource BgHover}" />
+        </Style>
+
+        <!-- tree node: selected state (overrides hover) -->
+        <Style Selector="Border.tree-node-selected">
+            <Setter Property="Background" Value="{DynamicResource AccentPrimaryBg}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimary}" />
+        </Style>
+        <Style Selector="Border.tree-node-selected > TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        </Style>
+
+        <!-- tree node: parent nodes get semibold text -->
+        <Style Selector="Border.tree-node-parent > TextBlock">
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+
+        <!-- breadcrumb: ancestor segments highlight on hover -->
+        <Style Selector="Button.breadcrumb-link:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.breadcrumb-link:pointerover TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource AccentPrimary}" />
+        </Style>
     </Window.Styles>
 
     <Design.DataContext>
@@ -41,20 +98,23 @@
         <!-- reusable field editor template -->
         <DataTemplate x:Key="FieldEditorTemplate" x:DataType="vm:FieldViewModel">
             <Border Classes="field-row"
-                    Classes.field-row-dirty="{Binding IsDirty}">
-                <Grid ColumnDefinitions="220,*,Auto" RowDefinitions="Auto,Auto">
+                    Classes.field-row-dirty="{Binding IsDirty}"
+                    Classes.field-row-error="{Binding HasValidationError}">
+                <Grid ColumnDefinitions="250,*,Auto" RowDefinitions="Auto,Auto">
                     <!-- label + description -->
                     <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                         <TextBlock Text="{Binding Label}"
                                    FontWeight="SemiBold"
                                    FontSize="13"
+                                   Foreground="{DynamicResource TextPrimary}"
                                    TextWrapping="Wrap" />
                         <TextBlock Text="{Binding Description}"
-                                   FontSize="11"
-                                   Opacity="0.45"
-                                   TextWrapping="Wrap"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource TextSecondary}"
+                                   TextTrimming="CharacterEllipsis"
                                    IsVisible="{Binding HasDescription}"
-                                   Margin="0,2,0,0" />
+                                   Margin="0,2,0,0"
+                                   ToolTip.Tip="{Binding Description}" />
                     </StackPanel>
 
                     <!-- editor controls (only one visible based on type) -->
@@ -84,23 +144,17 @@
                              Width="8" Height="8"
                              Margin="12,0,4,0"
                              VerticalAlignment="Center"
+                             Fill="{DynamicResource StatusDirty}"
                              IsVisible="{Binding IsDirty}"
-                             ToolTip.Tip="Modified">
-                        <Ellipse.Fill>
-                            <SolidColorBrush Color="#F5A623" />
-                        </Ellipse.Fill>
-                    </Ellipse>
+                             ToolTip.Tip="Modified" />
 
                     <!-- validation error -->
                     <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
                                Text="{Binding ValidationError}"
-                               FontSize="11"
+                               Foreground="{DynamicResource StatusError}"
+                               FontSize="12"
                                Margin="0,4,0,0"
-                               IsVisible="{Binding HasValidationError}">
-                        <TextBlock.Foreground>
-                            <SolidColorBrush Color="#E74C3C" />
-                        </TextBlock.Foreground>
-                    </TextBlock>
+                               IsVisible="{Binding HasValidationError}" />
                 </Grid>
             </Border>
         </DataTemplate>
@@ -109,18 +163,25 @@
     <Panel>
         <!-- loading overlay -->
         <Border IsVisible="{Binding IsLoading}"
-                Background="#80000000"
+                Background="{DynamicResource OverlayBackground}"
                 ZIndex="100"
                 IsHitTestVisible="True">
-            <StackPanel HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        Spacing="12">
-                <ProgressBar IsIndeterminate="True"
-                             Width="220" />
-                <TextBlock Text="{Binding StatusMessage}"
-                           HorizontalAlignment="Center"
-                           Opacity="0.8" />
-            </StackPanel>
+            <Border Background="{DynamicResource BgElevated}"
+                    CornerRadius="8"
+                    Padding="32"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    BoxShadow="0 4 24 0 #40000000">
+                <StackPanel Spacing="12">
+                    <ProgressBar IsIndeterminate="True"
+                                 Width="220"
+                                 Foreground="{DynamicResource AccentPrimary}" />
+                    <TextBlock Text="{Binding StatusMessage}"
+                               HorizontalAlignment="Center"
+                               Foreground="{DynamicResource TextSecondary}"
+                               FontSize="14" />
+                </StackPanel>
+            </Border>
         </Border>
 
         <!-- main layout -->
@@ -132,25 +193,48 @@
                                 Orientation="Horizontal"
                                 Spacing="6">
                         <Button Command="{Binding OpenCommand}"
-                                Content="Open"
-                                Padding="16,8"
-                                ToolTip.Tip="Open a save file (Ctrl+O)" />
+                                Padding="14,8"
+                                ToolTip.Tip="Open a save file (Ctrl+O)">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Data="{StaticResource IconFolderOpen}"
+                                          Width="16" Height="16" />
+                                <TextBlock Text="Open" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                         <Button Command="{Binding SaveCommand}"
-                                Content="Save"
-                                Padding="16,8"
+                                Padding="14,8"
                                 Classes="accent"
-                                ToolTip.Tip="Save changes (Ctrl+S)" />
+                                ToolTip.Tip="Save changes (Ctrl+S)">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Data="{StaticResource IconSave}"
+                                          Width="16" Height="16" />
+                                <TextBlock Text="Save" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                         <Button Command="{Binding RevertAllCommand}"
-                                Content="Revert All"
-                                Padding="16,8"
-                                ToolTip.Tip="Discard all unsaved changes" />
+                                Padding="14,8"
+                                ToolTip.Tip="Discard all unsaved changes">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Data="{StaticResource IconUndo}"
+                                          Width="16" Height="16" />
+                                <TextBlock Text="Revert All" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
 
                     <TextBox Grid.Column="2"
+                             Classes="search-box"
                              Text="{Binding SearchText, Mode=TwoWay}"
                              Watermark="Search fields..."
                              Width="250"
-                             VerticalAlignment="Center" />
+                             VerticalAlignment="Center">
+                        <TextBox.InnerLeftContent>
+                            <PathIcon Data="{StaticResource IconSearch}"
+                                      Width="14" Height="14"
+                                      Margin="6,0,0,0"
+                                      Foreground="{DynamicResource TextTertiary}" />
+                        </TextBox.InnerLeftContent>
+                    </TextBox>
                 </Grid>
             </Border>
 
@@ -161,46 +245,58 @@
                     <TextBlock Grid.Column="0"
                                Text="{Binding StatusMessage}"
                                FontSize="12"
-                               Opacity="0.6"
+                               Foreground="{DynamicResource TextSecondary}"
                                VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis" />
 
-                    <!-- change count -->
-                    <TextBlock Grid.Column="1"
-                               Text="{Binding ChangeCountText}"
-                               FontSize="12"
-                               Margin="16,0"
-                               Opacity="0.6"
-                               VerticalAlignment="Center"
-                               IsVisible="{Binding IsFileLoaded}" />
+                    <!-- change count: amber when dirty, secondary when clean -->
+                    <Panel Grid.Column="1"
+                           Margin="16,0"
+                           VerticalAlignment="Center"
+                           IsVisible="{Binding IsFileLoaded}">
+                        <TextBlock Text="{Binding ChangeCountText}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource StatusDirty}"
+                                   IsVisible="{Binding IsDirty}" />
+                        <TextBlock Text="{Binding ChangeCountText}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource TextSecondary}"
+                                   IsVisible="{Binding !IsDirty}" />
+                    </Panel>
 
                     <!-- separator -->
-                    <TextBlock Grid.Column="2"
-                               Text="|"
-                               FontSize="12"
-                               Opacity="0.3"
-                               Margin="0,0,16,0"
-                               VerticalAlignment="Center"
-                               IsVisible="{Binding IsFileLoaded}" />
+                    <Border Grid.Column="2"
+                            Width="1"
+                            Height="14"
+                            Margin="0,0,16,0"
+                            Background="{DynamicResource BorderDefault}"
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding IsFileLoaded}" />
 
-                    <!-- validation status (green when valid, red when errors) -->
+                    <!-- validation status with icons -->
                     <Panel Grid.Column="3"
                            VerticalAlignment="Center"
                            IsVisible="{Binding IsFileLoaded}">
-                        <TextBlock Text="Valid"
-                                   FontSize="12"
-                                   IsVisible="{Binding !HasValidationErrors}">
-                            <TextBlock.Foreground>
-                                <SolidColorBrush Color="#7ED321" />
-                            </TextBlock.Foreground>
-                        </TextBlock>
-                        <TextBlock Text="{Binding ValidationStatusText}"
-                                   FontSize="12"
-                                   IsVisible="{Binding HasValidationErrors}">
-                            <TextBlock.Foreground>
-                                <SolidColorBrush Color="#E74C3C" />
-                            </TextBlock.Foreground>
-                        </TextBlock>
+                        <StackPanel Orientation="Horizontal"
+                                    Spacing="4"
+                                    IsVisible="{Binding !HasValidationErrors}">
+                            <PathIcon Data="{StaticResource IconCheck}"
+                                      Width="12" Height="12"
+                                      Foreground="{DynamicResource StatusValid}" />
+                            <TextBlock Text="Valid"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource StatusValid}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal"
+                                    Spacing="4"
+                                    IsVisible="{Binding HasValidationErrors}">
+                            <PathIcon Data="{StaticResource IconError}"
+                                      Width="12" Height="12"
+                                      Foreground="{DynamicResource StatusError}" />
+                            <TextBlock Text="{Binding ValidationStatusText}"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource StatusError}" />
+                        </StackPanel>
                     </Panel>
                 </Grid>
             </Border>
@@ -211,23 +307,53 @@
                 <StackPanel IsVisible="{Binding !IsFileLoaded}"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
-                            Spacing="12"
+                            Spacing="20"
                             Margin="0,0,0,48">
-                    <TextBlock Text="Suzerain Save Editor"
-                               Classes="welcome-title" />
+                    <!-- two-line stacked title -->
+                    <StackPanel HorizontalAlignment="Center" Spacing="2">
+                        <TextBlock Text="SUZERAIN"
+                                   FontSize="32"
+                                   FontWeight="Light"
+                                   LetterSpacing="4"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource AccentPrimary}" />
+                        <TextBlock Text="Save Editor"
+                                   FontSize="20"
+                                   FontWeight="Light"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource TextPrimary}" />
+                    </StackPanel>
+
+                    <!-- decorative diamond divider -->
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                Spacing="8">
+                        <Border Height="1" Width="40"
+                                Background="{DynamicResource BorderDefault}"
+                                VerticalAlignment="Center" />
+                        <TextBlock Text="&#x25C6;"
+                                   FontSize="10"
+                                   Foreground="{DynamicResource AccentPrimary}"
+                                   VerticalAlignment="Center" />
+                        <Border Height="1" Width="40"
+                                Background="{DynamicResource BorderDefault}"
+                                VerticalAlignment="Center" />
+                    </StackPanel>
+
                     <TextBlock Text="Open a save file to begin editing"
-                               Classes="welcome-subtitle"
-                               Margin="0,0,0,8" />
+                               FontSize="14"
+                               HorizontalAlignment="Center"
+                               Foreground="{DynamicResource TextSecondary}" />
                     <Button Command="{Binding OpenCommand}"
                             Content="Open Save File"
                             HorizontalAlignment="Center"
-                            Padding="28,12"
+                            Padding="32,14"
                             FontSize="14"
                             Classes="accent" />
                     <TextBlock Text="Supports Suzerain and Rizia DLC save files (.json)"
-                               Classes="welcome-subtitle"
                                FontSize="12"
-                               Margin="0,12,0,0" />
+                               HorizontalAlignment="Center"
+                               Foreground="{DynamicResource TextTertiary}" />
                 </StackPanel>
 
                 <!-- loaded state: grouped tabs -->
@@ -235,7 +361,7 @@
                             SelectedIndex="{Binding SelectedGroupIndex}"
                             Padding="0"
                             Margin="0">
-                    <TabItem Header="General" Padding="16,8">
+                    <TabItem Header="General">
                         <ListBox Classes="field-list"
                                  ItemsSource="{Binding GeneralFields}"
                                  ItemTemplate="{StaticResource FieldEditorTemplate}"
@@ -243,7 +369,7 @@
                                  Padding="8,4" />
                     </TabItem>
 
-                    <TabItem Header="Sordland" Padding="16,8">
+                    <TabItem Header="Sordland">
                         <ListBox Classes="field-list"
                                  ItemsSource="{Binding SordlandFields}"
                                  ItemTemplate="{StaticResource FieldEditorTemplate}"
@@ -251,7 +377,7 @@
                                  Padding="8,4" />
                     </TabItem>
 
-                    <TabItem Header="Rizia" Padding="16,8">
+                    <TabItem Header="Rizia">
                         <ListBox Classes="field-list"
                                  ItemsSource="{Binding RiziaFields}"
                                  ItemTemplate="{StaticResource FieldEditorTemplate}"
@@ -259,19 +385,226 @@
                                  Padding="8,4" />
                     </TabItem>
 
-                    <TabItem Padding="16,8">
+                    <TabItem>
                         <TabItem.Header>
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <TextBlock Text="Advanced" />
                                 <TextBlock Text="{Binding AdvancedFieldCount, StringFormat='({0})'}"
-                                           Opacity="0.6" />
+                                           Foreground="{DynamicResource TextTertiary}" />
                             </StackPanel>
                         </TabItem.Header>
-                        <ListBox Classes="field-list"
-                                 ItemsSource="{Binding AdvancedFields}"
-                                 ItemTemplate="{StaticResource FieldEditorTemplate}"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                 Padding="8,4" />
+
+                        <!-- two-panel layout: tree sidebar + content -->
+                        <Grid ColumnDefinitions="280,1,*">
+                            <!-- left: category tree -->
+                            <Border Grid.Column="0"
+                                    Background="{DynamicResource BgElevated}"
+                                    Padding="4">
+                                <TreeView Classes="category-tree"
+                                          ItemsSource="{Binding CategoryNodes}"
+                                          SelectedItem="{Binding SelectedCategory, Mode=TwoWay}"
+                                          AutoScrollToSelectedItem="True">
+                                    <TreeView.ItemTemplate>
+                                        <TreeDataTemplate x:DataType="vm:CategoryNodeViewModel"
+                                                          ItemsSource="{Binding Children}">
+                                            <Border Classes="tree-node"
+                                                    Padding="8,6"
+                                                    CornerRadius="4"
+                                                    Background="{DynamicResource BgBase}"
+                                                    BorderThickness="3,0,0,0"
+                                                    BorderBrush="{DynamicResource BgBase}"
+                                                    Classes.tree-node-selected="{Binding IsSelected}"
+                                                    Classes.tree-node-parent="{Binding IsParent}">
+                                                <Border.Transitions>
+                                                    <Transitions>
+                                                        <BrushTransition Property="Background" Duration="0:0:0.25" />
+                                                        <BrushTransition Property="BorderBrush" Duration="0:0:0.25" />
+                                                    </Transitions>
+                                                </Border.Transitions>
+                                                <TextBlock Text="{Binding HeaderText}"
+                                                           FontSize="13"
+                                                           Foreground="{DynamicResource TextSecondary}" />
+                                            </Border>
+                                        </TreeDataTemplate>
+                                    </TreeView.ItemTemplate>
+                                </TreeView>
+                            </Border>
+
+                            <!-- separator -->
+                            <Border Grid.Column="1"
+                                    Background="{DynamicResource BorderSubtle}" />
+
+                            <!-- right: selected category content -->
+                            <DockPanel Grid.Column="2">
+                                <!-- breadcrumb header -->
+                                <Border DockPanel.Dock="Top"
+                                        Padding="16,10"
+                                        BorderThickness="0,0,0,1"
+                                        BorderBrush="{DynamicResource BorderSubtle}"
+                                        IsVisible="{Binding HasCategorySelected}">
+                                    <ItemsControl ItemsSource="{Binding BreadcrumbItems}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:BreadcrumbItem">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <!-- clickable segment (not last) -->
+                                                    <Button Classes="breadcrumb-link"
+                                                            Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).NavigateToBreadcrumbCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            IsVisible="{Binding !IsLast}"
+                                                            Padding="4,4"
+                                                            Background="Transparent"
+                                                            BorderThickness="0"
+                                                            Cursor="Hand">
+                                                        <TextBlock Text="{Binding Label}"
+                                                                   FontSize="16"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource TextSecondary}" />
+                                                    </Button>
+                                                    <!-- separator (not last) -->
+                                                    <TextBlock Text="&#xA0;&gt;&#xA0;"
+                                                               FontSize="16"
+                                                               Foreground="{DynamicResource TextTertiary}"
+                                                               VerticalAlignment="Center"
+                                                               IsVisible="{Binding !IsLast}" />
+                                                    <!-- current segment (last) -->
+                                                    <TextBlock Text="{Binding Label}"
+                                                               FontSize="16"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource TextPrimary}"
+                                                               VerticalAlignment="Center"
+                                                               IsVisible="{Binding IsLast}" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Border>
+
+                                <!-- content: three mutually exclusive views overlaid -->
+                                <Panel>
+                                    <!-- empty state: no category selected -->
+                                    <StackPanel IsVisible="{Binding !HasCategorySelected}"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                Spacing="8">
+                                        <TextBlock Text="Select a category from the tree"
+                                                   FontSize="14"
+                                                   Foreground="{DynamicResource TextTertiary}"
+                                                   HorizontalAlignment="Center" />
+                                        <TextBlock Text="Browse variables organized by namespace and sub-category"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource TextTertiary}"
+                                                   HorizontalAlignment="Center" />
+                                    </StackPanel>
+
+                                    <!-- sub-category card dashboard (parent nodes) -->
+                                    <ScrollViewer IsVisible="{Binding ShowCategoryCards}"
+                                                  HorizontalScrollBarVisibility="Disabled"
+                                                  Padding="16">
+                                        <ItemsControl ItemsSource="{Binding SubCategorySummaries}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel Orientation="Horizontal" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:SubCategorySummaryViewModel">
+                                                    <Button Classes="card-button"
+                                                            Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).NavigateToSubCategoryCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            Margin="0,0,12,12"
+                                                            Width="280"
+                                                            HorizontalContentAlignment="Stretch"
+                                                            Padding="0"
+                                                            Background="Transparent"
+                                                            BorderThickness="0">
+                                                        <Border Classes="sub-card"
+                                                                CornerRadius="8"
+                                                                Padding="16"
+                                                                Background="{DynamicResource BgSurface}"
+                                                                BorderBrush="{DynamicResource BorderSubtle}"
+                                                                BorderThickness="1">
+                                                            <Border.Transitions>
+                                                                <Transitions>
+                                                                    <BrushTransition Property="BorderBrush" Duration="0:0:0.25" />
+                                                                    <BrushTransition Property="Background" Duration="0:0:0.25" />
+                                                                </Transitions>
+                                                            </Border.Transitions>
+                                                            <StackPanel Spacing="8">
+                                                                <!-- header: label + count -->
+                                                                <Grid ColumnDefinitions="*,Auto">
+                                                                    <TextBlock Grid.Column="0"
+                                                                               Text="{Binding Label}"
+                                                                               FontWeight="SemiBold"
+                                                                               FontSize="15"
+                                                                               Foreground="{DynamicResource TextPrimary}" />
+                                                                    <TextBlock Grid.Column="1"
+                                                                               Text="{Binding FieldCount}"
+                                                                               FontSize="14"
+                                                                               Foreground="{DynamicResource AccentPrimary}" />
+                                                                </Grid>
+
+                                                                <!-- header separator -->
+                                                                <Border Height="1"
+                                                                        Background="{DynamicResource BorderSubtle}"
+                                                                        Margin="0,2,0,2" />
+
+                                                                <!-- preview labels -->
+                                                                <ItemsControl ItemsSource="{Binding PreviewLabels}">
+                                                                    <ItemsControl.ItemTemplate>
+                                                                        <DataTemplate x:DataType="x:String">
+                                                                            <TextBlock Text="{Binding}"
+                                                                                       FontSize="12"
+                                                                                       Foreground="{DynamicResource TextSecondary}"
+                                                                                       TextTrimming="CharacterEllipsis" />
+                                                                        </DataTemplate>
+                                                                    </ItemsControl.ItemTemplate>
+                                                                </ItemsControl>
+
+                                                                <!-- +N more -->
+                                                                <TextBlock Text="{Binding RemainingText}"
+                                                                           FontSize="11"
+                                                                           Foreground="{DynamicResource TextTertiary}"
+                                                                           IsVisible="{Binding HasRemaining}" />
+
+                                                                <!-- dirty indicator pill -->
+                                                                <Border CornerRadius="10"
+                                                                        Background="{DynamicResource StatusDirtyBg}"
+                                                                        Padding="8,4"
+                                                                        HorizontalAlignment="Left"
+                                                                        IsVisible="{Binding HasDirtyFields}">
+                                                                    <StackPanel Orientation="Horizontal"
+                                                                                Spacing="6">
+                                                                        <Ellipse Width="7" Height="7"
+                                                                                 VerticalAlignment="Center"
+                                                                                 Fill="{DynamicResource StatusDirty}" />
+                                                                        <TextBlock Text="{Binding DirtyText}"
+                                                                                   FontSize="11"
+                                                                                   Foreground="{DynamicResource StatusDirty}" />
+                                                                    </StackPanel>
+                                                                </Border>
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+
+                                    <!-- field list (leaf nodes) -->
+                                    <ListBox Classes="field-list"
+                                             ItemsSource="{Binding SelectedCategoryFields}"
+                                             ItemTemplate="{StaticResource FieldEditorTemplate}"
+                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                             Padding="8,4"
+                                             IsVisible="{Binding ShowCategoryFields}" />
+                                </Panel>
+                            </DockPanel>
+                        </Grid>
                     </TabItem>
                 </TabControl>
             </Panel>

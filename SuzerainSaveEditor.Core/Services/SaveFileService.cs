@@ -41,14 +41,22 @@ public sealed class SaveFileService : ISaveFileService
         // serialize
         var text = _parser.Serialize(document);
 
-        // write to temp file
+        // write to temp file then atomic replace
         var tempPath = filePath + ".tmp";
-        await File.WriteAllTextAsync(tempPath, text);
+        try
+        {
+            await File.WriteAllTextAsync(tempPath, text);
 
-        // atomic replace
-        if (File.Exists(filePath))
-            File.Replace(tempPath, filePath, null);
-        else
-            File.Move(tempPath, filePath);
+            if (File.Exists(filePath))
+                File.Replace(tempPath, filePath, null);
+            else
+                File.Move(tempPath, filePath);
+        }
+        catch
+        {
+            // clean up orphaned temp file on failure
+            try { File.Delete(tempPath); } catch { /* best effort */ }
+            throw;
+        }
     }
 }

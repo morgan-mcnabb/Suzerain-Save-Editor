@@ -6,67 +6,75 @@ namespace SuzerainSaveEditor.Tests.Parsing;
 
 public sealed class LuaTableRoundTripTests
 {
-    private static string GetExampleSaveFilePath()
+    private static string? TryGetExampleSaveFilePath()
     {
-        // walk up from bin/Debug/net10.0 to find the repo root
         var dir = AppContext.BaseDirectory;
-        while (dir is not null && !File.Exists(Path.Combine(dir, "example_save-file.json")))
-            dir = Directory.GetParent(dir)?.FullName;
+        while (dir is not null)
+        {
+            var rootPath = Path.Combine(dir, "example_save-file.json");
+            if (File.Exists(rootPath)) return rootPath;
 
-        Assert.NotNull(dir);
-        return Path.Combine(dir!, "example_save-file.json");
+            var docsPath = Path.Combine(dir, "docs", "example_save-file.json");
+            if (File.Exists(docsPath)) return docsPath;
+
+            dir = Directory.GetParent(dir)?.FullName;
+        }
+
+        return null;
     }
 
-    private static string ExtractVariablesString(string saveFilePath)
+    private static string ExtractVariablesString()
     {
-        var json = File.ReadAllText(saveFilePath);
+        var path = TryGetExampleSaveFilePath();
+        Skip.If(path is null, "example_save-file.json not found");
+        var json = File.ReadAllText(path);
         var root = JsonNode.Parse(json)!.AsObject();
         return root["variables"]!.GetValue<string>();
     }
 
-    [Fact]
+    [SkippableFact]
     public void Parse_ExampleSaveFile_Returns12793Variables()
     {
-        var variablesString = ExtractVariablesString(GetExampleSaveFilePath());
+        var variablesString = ExtractVariablesString();
         var result = LuaTableParser.Parse(variablesString);
 
         Assert.Equal(12793, result.Count);
     }
 
-    [Fact]
+    [SkippableFact]
     public void Parse_ExampleSaveFile_ContainsBoolValues()
     {
-        var variablesString = ExtractVariablesString(GetExampleSaveFilePath());
+        var variablesString = ExtractVariablesString();
         var result = LuaTableParser.Parse(variablesString);
 
         var boolCount = result.Count(v => v.Value is LuaValue.Bool);
         Assert.True(boolCount > 12000, $"Expected >12000 bool values, got {boolCount}");
     }
 
-    [Fact]
+    [SkippableFact]
     public void Parse_ExampleSaveFile_ContainsIntValues()
     {
-        var variablesString = ExtractVariablesString(GetExampleSaveFilePath());
+        var variablesString = ExtractVariablesString();
         var result = LuaTableParser.Parse(variablesString);
 
         var intCount = result.Count(v => v.Value is LuaValue.Int);
         Assert.True(intCount > 400, $"Expected >400 int values, got {intCount}");
     }
 
-    [Fact]
+    [SkippableFact]
     public void Parse_ExampleSaveFile_ContainsStringValues()
     {
-        var variablesString = ExtractVariablesString(GetExampleSaveFilePath());
+        var variablesString = ExtractVariablesString();
         var result = LuaTableParser.Parse(variablesString);
 
         var strCount = result.Count(v => v.Value is LuaValue.Str);
         Assert.True(strCount > 50, $"Expected >50 string values, got {strCount}");
     }
 
-    [Fact]
+    [SkippableFact]
     public void Parse_ExampleSaveFile_ContainsKnownBoolVariable()
     {
-        var variablesString = ExtractVariablesString(GetExampleSaveFilePath());
+        var variablesString = ExtractVariablesString();
         var result = LuaTableParser.Parse(variablesString);
 
         var variable = result.FirstOrDefault(v => v.Key == "GameCondition.Turn01_A_PoliticalOverview");
@@ -74,10 +82,10 @@ public sealed class LuaTableRoundTripTests
         Assert.Equal(new LuaValue.Bool(false), variable.Value);
     }
 
-    [Fact]
+    [SkippableFact]
     public void Parse_ExampleSaveFile_ContainsKnownIntVariable()
     {
-        var variablesString = ExtractVariablesString(GetExampleSaveFilePath());
+        var variablesString = ExtractVariablesString();
         var result = LuaTableParser.Parse(variablesString);
 
         var variable = result.FirstOrDefault(v => v.Key == "BaseGameSetup.CurrentTurn");
@@ -85,30 +93,30 @@ public sealed class LuaTableRoundTripTests
         Assert.Equal(new LuaValue.Int(11), variable.Value);
     }
 
-    [Fact]
+    [SkippableFact]
     public void Parse_ExampleSaveFile_ContainsKeysWithDoubleEquals()
     {
-        var variablesString = ExtractVariablesString(GetExampleSaveFilePath());
+        var variablesString = ExtractVariablesString();
         var result = LuaTableParser.Parse(variablesString);
 
         var keysWithDoubleEquals = result.Where(v => v.Key.Contains("==")).ToList();
         Assert.True(keysWithDoubleEquals.Count > 0, "Expected at least one key containing '=='");
     }
 
-    [Fact]
+    [SkippableFact]
     public void RoundTrip_ExampleSaveFile_ProducesByteIdenticalOutput()
     {
-        var variablesString = ExtractVariablesString(GetExampleSaveFilePath());
+        var variablesString = ExtractVariablesString();
         var parsed = LuaTableParser.Parse(variablesString);
         var serialized = LuaTableSerializer.Serialize(parsed);
 
         Assert.Equal(variablesString, serialized);
     }
 
-    [Fact]
+    [SkippableFact]
     public void Parse_ExampleSaveFile_FirstVariableIsGameCondition()
     {
-        var variablesString = ExtractVariablesString(GetExampleSaveFilePath());
+        var variablesString = ExtractVariablesString();
         var result = LuaTableParser.Parse(variablesString);
 
         Assert.StartsWith("GameCondition.", result[0].Key);

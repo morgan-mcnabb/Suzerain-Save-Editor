@@ -10,20 +10,34 @@ public sealed class SchemaIntegrationTests
     private readonly FieldResolver _resolver = new();
     private readonly JsonSaveParser _parser = new();
 
-    private static string GetExampleSaveFilePath()
+    private static string? TryGetExampleSaveFilePath()
     {
         var dir = AppContext.BaseDirectory;
-        while (dir is not null && !File.Exists(Path.Combine(dir, "example_save-file.json")))
-            dir = Directory.GetParent(dir)?.FullName;
+        while (dir is not null)
+        {
+            var rootPath = Path.Combine(dir, "example_save-file.json");
+            if (File.Exists(rootPath)) return rootPath;
 
-        Assert.NotNull(dir);
-        return Path.Combine(dir!, "example_save-file.json");
+            var docsPath = Path.Combine(dir, "docs", "example_save-file.json");
+            if (File.Exists(docsPath)) return docsPath;
+
+            dir = Directory.GetParent(dir)?.FullName;
+        }
+
+        return null;
     }
 
-    [Fact]
+    private string ReadSaveFile()
+    {
+        var path = TryGetExampleSaveFilePath();
+        Skip.If(path is null, "example_save-file.json not found");
+        return File.ReadAllText(path);
+    }
+
+    [SkippableFact]
     public void AllSchemaFields_CanBeReadFromExampleSave()
     {
-        var doc = _parser.Parse(File.ReadAllText(GetExampleSaveFilePath()));
+        var doc = _parser.Parse(ReadSaveFile());
         var fields = _schema.GetAll();
         var unresolved = new List<string>();
 
@@ -41,10 +55,10 @@ public sealed class SchemaIntegrationTests
         Assert.Empty(metaAndEntityUnresolved);
     }
 
-    [Fact]
+    [SkippableFact]
     public void ReadValue_MetaCampaignName_MatchesExpected()
     {
-        var doc = _parser.Parse(File.ReadAllText(GetExampleSaveFilePath()));
+        var doc = _parser.Parse(ReadSaveFile());
         var field = _schema.GetById("meta.campaignName")!;
 
         var value = _resolver.ReadValue(doc, field);
@@ -52,10 +66,10 @@ public sealed class SchemaIntegrationTests
         Assert.Equal("KING", value);
     }
 
-    [Fact]
+    [SkippableFact]
     public void ReadValue_MetaTurnNo_MatchesExpected()
     {
-        var doc = _parser.Parse(File.ReadAllText(GetExampleSaveFilePath()));
+        var doc = _parser.Parse(ReadSaveFile());
         var field = _schema.GetById("meta.turnNo")!;
 
         var value = _resolver.ReadValue(doc, field);
@@ -63,10 +77,10 @@ public sealed class SchemaIntegrationTests
         Assert.Equal("11", value);
     }
 
-    [Fact]
+    [SkippableFact]
     public void ReadValue_SordlandGovernmentBudget_ReturnsNonNull()
     {
-        var doc = _parser.Parse(File.ReadAllText(GetExampleSaveFilePath()));
+        var doc = _parser.Parse(ReadSaveFile());
         var field = _schema.GetById("sordland.governmentBudget")!;
 
         var value = _resolver.ReadValue(doc, field);
@@ -75,10 +89,10 @@ public sealed class SchemaIntegrationTests
         Assert.True(int.TryParse(value, out _), $"Expected integer value, got '{value}'");
     }
 
-    [Fact]
+    [SkippableFact]
     public void ReadValue_EntityRelations_ReturnsNonNull()
     {
-        var doc = _parser.Parse(File.ReadAllText(GetExampleSaveFilePath()));
+        var doc = _parser.Parse(ReadSaveFile());
         var field = _schema.GetById("rizia.entityWehlenRelations")!;
 
         var value = _resolver.ReadValue(doc, field);
@@ -86,10 +100,10 @@ public sealed class SchemaIntegrationTests
         Assert.NotNull(value);
     }
 
-    [Fact]
+    [SkippableFact]
     public void ReadValue_EntityHodComposition_ReturnsNonNull()
     {
-        var doc = _parser.Parse(File.ReadAllText(GetExampleSaveFilePath()));
+        var doc = _parser.Parse(ReadSaveFile());
         var field = _schema.GetById("rizia.hodComposition")!;
 
         var value = _resolver.ReadValue(doc, field);
@@ -98,10 +112,10 @@ public sealed class SchemaIntegrationTests
         Assert.Contains("HODComposition", value);
     }
 
-    [Fact]
+    [SkippableFact]
     public void WriteValue_ThenSerialize_PreservesRoundTrip()
     {
-        var original = File.ReadAllText(GetExampleSaveFilePath());
+        var original = ReadSaveFile();
         var doc = _parser.Parse(original);
         var field = _schema.GetById("meta.notes")!;
 
@@ -116,10 +130,10 @@ public sealed class SchemaIntegrationTests
         Assert.Equal(original, serialized);
     }
 
-    [Fact]
+    [SkippableFact]
     public void WriteValue_Variable_ThenSerialize_ChangesOnlyThatVariable()
     {
-        var original = File.ReadAllText(GetExampleSaveFilePath());
+        var original = ReadSaveFile();
         var doc = _parser.Parse(original);
         var field = _schema.GetById("sordland.governmentBudget")!;
         var originalValue = _resolver.ReadValue(doc, field)!;

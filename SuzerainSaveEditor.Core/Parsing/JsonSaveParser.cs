@@ -6,9 +6,6 @@ using SuzerainSaveEditor.Core.Models;
 
 namespace SuzerainSaveEditor.Core.Parsing;
 
-/// <summary>
-/// parses and serializes suzerain json save files with byte-perfect round-trip fidelity
-/// </summary>
 public sealed class JsonSaveParser : ISaveParser
 {
     private static readonly JsonWriterOptions WriterOptions = new()
@@ -168,10 +165,17 @@ public sealed class JsonSaveParser : ISaveParser
             {
                 var entry = array[i]?.AsObject()
                     ?? throw new SaveParseException($"entityUpdates[{i}] is null.");
+                var nameInDatabase = entry["nameInDatabase"]
+                    ?? throw new SaveParseException($"entityUpdates[{i}] is missing 'nameInDatabase'.");
+                var fieldName = entry["fieldName"]
+                    ?? throw new SaveParseException($"entityUpdates[{i}] is missing 'fieldName'.");
+                var fieldValue = entry["fieldValue"]
+                    ?? throw new SaveParseException($"entityUpdates[{i}] is missing 'fieldValue'.");
+
                 updates.Add(new EntityUpdate(
-                    NameInDatabase: entry["nameInDatabase"]!.GetValue<string>(),
-                    FieldName: entry["fieldName"]!.GetValue<string>(),
-                    FieldValue: entry["fieldValue"]!.GetValue<string>()));
+                    NameInDatabase: nameInDatabase.GetValue<string>(),
+                    FieldName: fieldName.GetValue<string>(),
+                    FieldValue: fieldValue.GetValue<string>()));
             }
             catch (Exception ex) when (ex is not SaveParseException)
             {
