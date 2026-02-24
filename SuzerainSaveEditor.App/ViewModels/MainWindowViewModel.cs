@@ -266,9 +266,18 @@ public partial class MainWindowViewModel : ViewModelBase
             StatusMessage = "Loading...";
 
             var document = await _saveFileService.OpenAsync(path);
-            var discovered = _discoveryService.DiscoverFields(document);
-            _activeSchema = new Core.Schema.CompositeSchemaService(_schemaService, discovered);
-            _editSession = new EditSession(document, path, _activeSchema, _fieldResolver);
+
+            // offload CPU-bound work to a background thread to avoid blocking the UI
+            var (editSession, activeSchema) = await Task.Run(() =>
+            {
+                var discovered = _discoveryService.DiscoverFields(document);
+                var schema = new Core.Schema.CompositeSchemaService(_schemaService, discovered);
+                var session = new EditSession(document, path, schema, _fieldResolver);
+                return (session, (ISchemaService)schema);
+            });
+
+            _activeSchema = activeSchema;
+            _editSession = editSession;
 
             FilePath = path;
             IsFileLoaded = true;
