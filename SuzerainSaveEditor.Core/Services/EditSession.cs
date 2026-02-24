@@ -58,10 +58,8 @@ public sealed class EditSession : IEditSession
 
         var originalValue = _resolver.ReadValue(OriginalDocument, field);
 
-        // compare through the resolver's normalization to handle casing differences
-        // (e.g. user types "true" but ReadValue normalizes to "True")
-        var written = _resolver.WriteValue(OriginalDocument, field, value);
-        var normalizedValue = _resolver.ReadValue(written, field);
+        // normalize directly instead of round-tripping through a throwaway document
+        var normalizedValue = NormalizeValue(field, value);
 
         // if the normalized written value matches the original, remove the edit
         if (normalizedValue == originalValue)
@@ -138,6 +136,19 @@ public sealed class EditSession : IEditSession
     {
         return _schema.GetById(fieldId)
             ?? throw new KeyNotFoundException($"Field '{fieldId}' not found in schema.");
+    }
+
+    // normalize value to match what a write-then-read round-trip would produce
+    // (e.g. "true" → "True", "007" → "7" for variable/metadata ints)
+    private static string NormalizeValue(FieldDefinition field, string value)
+    {
+        if (field.Type == FieldType.Bool)
+            return bool.Parse(value).ToString();
+
+        if (field.Type == FieldType.Int && field.Source is not FieldSource.EntityUpdate)
+            return int.Parse(value, System.Globalization.CultureInfo.InvariantCulture).ToString();
+
+        return value;
     }
 
     private static ValidationResult ValidateFieldValue(FieldDefinition field, string value)
