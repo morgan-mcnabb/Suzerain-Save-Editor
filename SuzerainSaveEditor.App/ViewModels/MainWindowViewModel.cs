@@ -26,6 +26,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly List<CategoryNodeViewModel> _allCategoryNodes = [];
     private readonly Dictionary<string, FieldViewModel> _fieldLookup = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _validationErrors = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, CategoryNodeViewModel> _categoryNodeLookup = new(StringComparer.Ordinal);
 
     // observable collections bound to UI (filtered by search)
     public ObservableCollection<FieldViewModel> GeneralFields { get; } = [];
@@ -324,6 +325,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void BuildCategoryTree(ISchemaService schema)
     {
+        _categoryNodeLookup.Clear();
+
         // get field definitions for advanced fields
         var advancedDefs = _allAdvancedFields
             .Select(vm => schema.GetById(vm.FieldId))
@@ -342,7 +345,15 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             var node = BuildCategoryNode(category, vmLookup, parent: null);
             _allCategoryNodes.Add(node);
+            IndexCategoryNode(node);
         }
+    }
+
+    private void IndexCategoryNode(CategoryNodeViewModel node)
+    {
+        _categoryNodeLookup[node.Key] = node;
+        foreach (var child in node.Children)
+            IndexCategoryNode(child);
     }
 
     private static CategoryNodeViewModel BuildCategoryNode(
@@ -546,20 +557,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void SelectCategoryByKey(string key)
     {
-        var node = FindNodeByKey(_allCategoryNodes, key);
-        if (node is not null && node.IsVisible)
+        if (_categoryNodeLookup.TryGetValue(key, out var node) && node.IsVisible)
             SelectCategory(node);
-    }
-
-    private static CategoryNodeViewModel? FindNodeByKey(IEnumerable<CategoryNodeViewModel> nodes, string key)
-    {
-        foreach (var node in nodes)
-        {
-            if (node.Key == key) return node;
-            var found = FindNodeByKey(node.Children, key);
-            if (found is not null) return found;
-        }
-        return null;
     }
 
     private FieldViewModel? FindFieldViewModel(string fieldId)
