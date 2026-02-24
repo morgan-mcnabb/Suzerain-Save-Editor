@@ -76,7 +76,8 @@ public sealed class JsonSaveParser : ISaveParser
         using var writer = new Utf8JsonWriter(stream, WriterOptions);
         root.WriteTo(writer);
         writer.Flush();
-        return Encoding.UTF8.GetString(stream.ToArray());
+        stream.TryGetBuffer(out var buffer);
+        return Encoding.UTF8.GetString(buffer.Array!, buffer.Offset, buffer.Count);
     }
 
     private static SaveMetadata ExtractMetadata(JsonObject root)
