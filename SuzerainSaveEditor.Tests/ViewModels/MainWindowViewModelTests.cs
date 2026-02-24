@@ -401,6 +401,31 @@ public sealed class MainWindowViewModelTests
         Assert.False(vm.IsFileLoaded);
     }
 
+    [Fact]
+    public async Task SaveCommand_IsLoadingFalse_AfterSuccessfulSave()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.False(vm.IsLoading);
+    }
+
+    [Fact]
+    public async Task SaveCommand_IsLoadingFalse_AfterReloadFailure()
+    {
+        var failOnReload = new FailOnReloadSaveFileService(CreateTestDocument());
+        var vm = CreateViewModel(saveFileService: failOnReload);
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.False(vm.IsLoading);
+    }
+
     // search
     [Fact]
     public async Task Search_FiltersFieldsByLabel()

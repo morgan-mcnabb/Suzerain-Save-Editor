@@ -131,7 +131,10 @@ public partial class CategoryNodeViewModel : ViewModelBase
             if (child.ApplyFilter(query))
                 visibleChildren.Add(child);
         }
-        Children.ReplaceAll(visibleChildren);
+
+        // skip collection rebuild if the visible set hasn't changed
+        if (!ChildrenMatchSequence(visibleChildren))
+            Children.ReplaceAll(visibleChildren);
 
         // count matching leaf fields
         var matchingFieldCount = _allFields.Count(f => FieldMatchesQuery(f, query));
@@ -152,6 +155,16 @@ public partial class CategoryNodeViewModel : ViewModelBase
             return _allFields;
 
         return _allFields.Where(f => FieldMatchesQuery(f, query)).ToList();
+    }
+
+    private bool ChildrenMatchSequence(List<CategoryNodeViewModel> newChildren)
+    {
+        if (Children.Count != newChildren.Count) return false;
+        for (var i = 0; i < Children.Count; i++)
+        {
+            if (!ReferenceEquals(Children[i], newChildren[i])) return false;
+        }
+        return true;
     }
 
     private static bool FieldMatchesQuery(FieldViewModel field, string query)

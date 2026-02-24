@@ -149,10 +149,17 @@ public partial class MainWindowViewModel : ViewModelBase
             var savedTab = SelectedGroupIndex;
             var savedSearch = SearchText;
             var savedCategoryKey = SelectedCategory?.Key;
-            await LoadFileAsync(_editSession.FilePath);
 
-            if (!IsFileLoaded)
+            try
+            {
+                await LoadFileCoreAsync(_editSession.FilePath);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Failed to load: {ex.Message}";
+                IsFileLoaded = false;
                 return;
+            }
 
             SelectedGroupIndex = savedTab;
             SearchText = savedSearch;
@@ -263,30 +270,7 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             IsLoading = true;
-            StatusMessage = "Loading...";
-
-            var document = await _saveFileService.OpenAsync(path);
-
-            // offload CPU-bound work to a background thread to avoid blocking the UI
-            var (editSession, activeSchema) = await Task.Run(() =>
-            {
-                var discovered = _discoveryService.DiscoverFields(document);
-                var schema = new Core.Schema.CompositeSchemaService(_schemaService, discovered);
-                var session = new EditSession(document, path, schema, _fieldResolver);
-                return (session, (ISchemaService)schema);
-            });
-
-            _activeSchema = activeSchema;
-            _editSession = editSession;
-
-            FilePath = path;
-            IsFileLoaded = true;
-            SaveCommittedToDisk = false;
-
-            PopulateFields();
-            UpdateDirtyState();
-
-            StatusMessage = $"Loaded: {Path.GetFileName(path)}";
+            await LoadFileCoreAsync(path);
         }
         catch (Exception ex)
         {
@@ -297,6 +281,35 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             IsLoading = false;
         }
+    }
+
+    // core loading logic without IsLoading management so callers can control the overlay
+    private async Task LoadFileCoreAsync(string path)
+    {
+        StatusMessage = "Loading...";
+
+        var document = await _saveFileService.OpenAsync(path);
+
+        // offload CPU-bound work to a background thread to avoid blocking the UI
+        var (editSession, activeSchema) = await Task.Run(() =>
+        {
+            var discovered = _discoveryService.DiscoverFields(document);
+            var schema = new Core.Schema.CompositeSchemaService(_schemaService, discovered);
+            var session = new EditSession(document, path, schema, _fieldResolver);
+            return (session, (ISchemaService)schema);
+        });
+
+        _activeSchema = activeSchema;
+        _editSession = editSession;
+
+        FilePath = path;
+        IsFileLoaded = true;
+        SaveCommittedToDisk = false;
+
+        PopulateFields();
+        UpdateDirtyState();
+
+        StatusMessage = $"Loaded: {Path.GetFileName(path)}";
     }
 
     private void PopulateFields()
