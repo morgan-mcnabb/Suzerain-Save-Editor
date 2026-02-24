@@ -14,6 +14,7 @@ public sealed class EditSession : IEditSession
     public SaveDocument OriginalDocument { get; }
     public SaveDocument CurrentDocument { get; private set; }
     public bool IsDirty => _edits.Count > 0;
+    public int DirtyCount => _edits.Count;
 
     public EditSession(
         SaveDocument document,
@@ -58,20 +59,29 @@ public sealed class EditSession : IEditSession
         if (normalizedValue == originalValue)
         {
             _edits.Remove(fieldId);
-            RebuildCurrentDocument();
-            return ValidationResult.Success;
+        }
+        else
+        {
+            _edits[fieldId] = new FieldEdit(fieldId, originalValue, value);
         }
 
-        _edits[fieldId] = new FieldEdit(fieldId, originalValue, value);
-        RebuildCurrentDocument();
+        // apply just this single write to the current document instead of rebuilding from scratch
+        CurrentDocument = _resolver.WriteValue(CurrentDocument, field, value);
         return ValidationResult.Success;
     }
 
     public void RevertField(string fieldId)
     {
-        GetFieldOrThrow(fieldId);
-        if (_edits.Remove(fieldId))
-            RebuildCurrentDocument();
+        var field = GetFieldOrThrow(fieldId);
+        if (_edits.TryGetValue(fieldId, out var edit))
+        {
+            _edits.Remove(fieldId);
+            // write the original value back incrementally instead of full rebuild
+            if (edit.OldValue is not null)
+                CurrentDocument = _resolver.WriteValue(CurrentDocument, field, edit.OldValue);
+            else
+                RebuildCurrentDocument();
+        }
     }
 
     public void RevertAll()
@@ -79,6 +89,8 @@ public sealed class EditSession : IEditSession
         _edits.Clear();
         CurrentDocument = OriginalDocument;
     }
+
+    public bool IsFieldDirty(string fieldId) => _edits.ContainsKey(fieldId);
 
     public IReadOnlyList<FieldEdit> GetDirtyFields() => _edits.Values.ToList();
 

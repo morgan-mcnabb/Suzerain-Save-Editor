@@ -6,6 +6,7 @@ public interface IEditSession
 {
     string? FilePath { get; }
     bool IsDirty { get; }
+    int DirtyCount { get; }
     SaveDocument OriginalDocument { get; }
     SaveDocument CurrentDocument { get; }
 
@@ -13,6 +14,7 @@ public interface IEditSession
     ValidationResult SetValue(string fieldId, string value);
     void RevertField(string fieldId);
     void RevertAll();
+    bool IsFieldDirty(string fieldId);
     IReadOnlyList<FieldEdit> GetDirtyFields();
     ValidationResult ValidateField(string fieldId, string value);
     ValidationResult ValidateAll();

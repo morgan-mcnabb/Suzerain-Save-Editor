@@ -552,6 +552,77 @@ public sealed class EditSessionTests
         Assert.False(session.IsDirty);
     }
 
+
+
+    [Fact]
+    public void IsFieldDirty_UneditedField_ReturnsFalse()
+    {
+        var session = CreateSession();
+        Assert.False(session.IsFieldDirty("sordland.governmentBudget"));
+    }
+
+    [Fact]
+    public void IsFieldDirty_EditedField_ReturnsTrue()
+    {
+        var session = CreateSession();
+        session.SetValue("sordland.governmentBudget", "8");
+        Assert.True(session.IsFieldDirty("sordland.governmentBudget"));
+    }
+
+    [Fact]
+    public void IsFieldDirty_RevertedField_ReturnsFalse()
+    {
+        var session = CreateSession();
+        session.SetValue("sordland.governmentBudget", "8");
+        session.RevertField("sordland.governmentBudget");
+        Assert.False(session.IsFieldDirty("sordland.governmentBudget"));
+    }
+
+    [Fact]
+    public void IsFieldDirty_SetBackToOriginal_ReturnsFalse()
+    {
+        var session = CreateSession();
+        session.SetValue("sordland.governmentBudget", "8");
+        session.SetValue("sordland.governmentBudget", "4");
+        Assert.False(session.IsFieldDirty("sordland.governmentBudget"));
+    }
+
+    // --- DirtyCount ---
+
+    [Fact]
+    public void DirtyCount_NoEdits_ReturnsZero()
+    {
+        var session = CreateSession();
+        Assert.Equal(0, session.DirtyCount);
+    }
+
+    [Fact]
+    public void DirtyCount_OneEdit_ReturnsOne()
+    {
+        var session = CreateSession();
+        session.SetValue("sordland.governmentBudget", "8");
+        Assert.Equal(1, session.DirtyCount);
+    }
+
+    [Fact]
+    public void DirtyCount_MultipleEdits_ReturnsCount()
+    {
+        var session = CreateSession();
+        session.SetValue("sordland.governmentBudget", "8");
+        session.SetValue("sordland.economyTaxation", "5");
+        Assert.Equal(2, session.DirtyCount);
+    }
+
+    [Fact]
+    public void DirtyCount_AfterRevertAll_ReturnsZero()
+    {
+        var session = CreateSession();
+        session.SetValue("sordland.governmentBudget", "8");
+        session.SetValue("sordland.economyTaxation", "5");
+        session.RevertAll();
+        Assert.Equal(0, session.DirtyCount);
+    }
+
     // --- string accepts anything ---
 
     [Fact]

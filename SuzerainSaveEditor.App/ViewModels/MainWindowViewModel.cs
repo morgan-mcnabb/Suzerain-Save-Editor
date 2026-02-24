@@ -24,6 +24,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly List<FieldViewModel> _allRiziaFields = [];
     private readonly List<FieldViewModel> _allAdvancedFields = [];
     private readonly List<CategoryNodeViewModel> _allCategoryNodes = [];
+    private readonly Dictionary<string, FieldViewModel> _fieldLookup = new(StringComparer.Ordinal);
 
     // observable collections bound to UI (filtered by search)
     public ObservableCollection<FieldViewModel> GeneralFields { get; } = [];
@@ -267,6 +268,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _allRiziaFields.Clear();
         _allAdvancedFields.Clear();
         _allCategoryNodes.Clear();
+        _fieldLookup.Clear();
 
         var schema = _activeSchema ?? _schemaService;
 
@@ -283,6 +285,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 field.Max,
                 field.Options,
                 OnFieldValueChanged);
+
+            _fieldLookup[field.Id] = vm;
 
             switch (field.Group)
             {
@@ -451,7 +455,7 @@ public partial class MainWindowViewModel : ViewModelBase
         else
         {
             fieldVm.ValidationError = null;
-            fieldVm.IsDirty = _editSession.GetDirtyFields().Any(e => e.FieldId == fieldId);
+            fieldVm.IsDirty = _editSession.IsFieldDirty(fieldId);
         }
 
         UpdateDirtyState();
@@ -469,8 +473,7 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        var dirtyFields = _editSession.GetDirtyFields();
-        ChangeCount = dirtyFields.Count;
+        ChangeCount = _editSession.DirtyCount;
         IsDirty = ChangeCount > 0;
         ChangeCountText = ChangeCount switch
         {
@@ -552,7 +555,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private FieldViewModel? FindFieldViewModel(string fieldId)
     {
-        return AllFields().FirstOrDefault(f => f.FieldId == fieldId);
+        return _fieldLookup.GetValueOrDefault(fieldId);
     }
 
     private IEnumerable<FieldViewModel> AllFields()
