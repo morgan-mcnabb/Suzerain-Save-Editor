@@ -758,12 +758,12 @@ public sealed class MainWindowViewModelTests
         var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
         await vm.OpenCommand.ExecuteAsync(null);
 
-        // should have category nodes for: Custom, GameCondition, entity:Custom_Ent
+        // should have category nodes for: Turns (unified), entity:Custom_Ent
         Assert.True(vm.CategoryNodes.Count >= 2);
 
-        // GameCondition should contain turn fields
-        var gc = vm.CategoryNodes.FirstOrDefault(n => n.Key == "GameCondition");
-        Assert.NotNull(gc);
+        // unified Turns node should contain turn fields
+        var turns = vm.CategoryNodes.FirstOrDefault(n => n.Key == "Turns");
+        Assert.NotNull(turns);
     }
 
     [Fact]
@@ -785,8 +785,8 @@ public sealed class MainWindowViewModelTests
 
         // only nodes with matching fields should be visible
         Assert.True(vm.CategoryNodes.Count >= 1);
-        var gc = vm.CategoryNodes.FirstOrDefault(n => n.Key == "GameCondition");
-        Assert.NotNull(gc);
+        var turns = vm.CategoryNodes.FirstOrDefault(n => n.Key == "Turns");
+        Assert.NotNull(turns);
     }
 
     [Fact]
@@ -797,9 +797,9 @@ public sealed class MainWindowViewModelTests
 
         vm.SearchText = "Diplomacy";
 
-        var gc = vm.CategoryNodes.FirstOrDefault(n => n.Key == "GameCondition");
-        Assert.NotNull(gc);
-        Assert.True(gc.IsExpanded);
+        var turns = vm.CategoryNodes.FirstOrDefault(n => n.Key == "Turns");
+        Assert.NotNull(turns);
+        Assert.True(turns.IsExpanded);
     }
 
     [Fact]
@@ -808,9 +808,9 @@ public sealed class MainWindowViewModelTests
         var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
         await vm.OpenCommand.ExecuteAsync(null);
 
-        var gc = vm.CategoryNodes.FirstOrDefault(n => n.Key == "GameCondition");
-        Assert.NotNull(gc);
-        Assert.Contains("Turns", gc.HeaderText);
+        var turns = vm.CategoryNodes.FirstOrDefault(n => n.Key == "Turns");
+        Assert.NotNull(turns);
+        Assert.Contains("Turns", turns.HeaderText);
     }
 
     // category selection
@@ -856,6 +856,123 @@ public sealed class MainWindowViewModelTests
         Assert.False(vm.HasCategorySelected);
         Assert.Empty(vm.SelectedCategoryFields);
         Assert.Equal("", vm.SelectedCategoryPath);
+    }
+
+    // card dashboard (parent node selection)
+
+    [Fact]
+    public async Task SelectCategory_ParentNode_ShowsCategoryCards()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var parentNode = vm.CategoryNodes.FirstOrDefault(n => n.IsParent);
+        if (parentNode is null) return; // skip if no parent nodes in this dataset
+
+        vm.SelectCategory(parentNode);
+
+        Assert.True(vm.ShowCategoryCards);
+        Assert.False(vm.ShowCategoryFields);
+        Assert.NotEmpty(vm.SubCategorySummaries);
+    }
+
+    [Fact]
+    public async Task SelectCategory_LeafNode_ShowsCategoryFields()
+    {
+        var vm = CreateViewModelWithDiscoveredFields();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var leafNode = vm.CategoryNodes.FirstOrDefault(n => n.IsLeaf && n.AllFields.Count > 0);
+        Assert.NotNull(leafNode);
+
+        vm.SelectCategory(leafNode);
+
+        Assert.False(vm.ShowCategoryCards);
+        Assert.True(vm.ShowCategoryFields);
+        Assert.NotEmpty(vm.SelectedCategoryFields);
+        Assert.Empty(vm.SubCategorySummaries);
+    }
+
+    [Fact]
+    public async Task SelectCategory_Null_ClearsCardsAndFields()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        // select something first
+        var node = vm.CategoryNodes.First();
+        vm.SelectCategory(node);
+
+        vm.SelectCategory(null);
+
+        Assert.False(vm.ShowCategoryCards);
+        Assert.False(vm.ShowCategoryFields);
+        Assert.Empty(vm.SubCategorySummaries);
+        Assert.Empty(vm.SelectedCategoryFields);
+    }
+
+    [Fact]
+    public async Task SelectCategory_ParentNode_AutoExpands()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var parentNode = vm.CategoryNodes.FirstOrDefault(n => n.IsParent);
+        if (parentNode is null) return;
+
+        Assert.False(parentNode.IsExpanded);
+        vm.SelectCategory(parentNode);
+
+        Assert.True(parentNode.IsExpanded);
+    }
+
+    [Fact]
+    public async Task SelectCategory_ParentNode_ClickAgainCollapses()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var parentNode = vm.CategoryNodes.FirstOrDefault(n => n.IsParent);
+        if (parentNode is null) return;
+
+        vm.SelectCategory(parentNode);
+        Assert.True(parentNode.IsExpanded);
+
+        // deselect then re-select to simulate clicking again
+        vm.SelectCategory(null);
+        vm.SelectCategory(parentNode);
+        Assert.False(parentNode.IsExpanded);
+    }
+
+    [Fact]
+    public async Task NavigateToSubCategory_SelectsTargetNode()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var parentNode = vm.CategoryNodes.FirstOrDefault(n => n.IsParent);
+        if (parentNode is null) return;
+
+        vm.SelectCategory(parentNode);
+        Assert.NotEmpty(vm.SubCategorySummaries);
+
+        var card = vm.SubCategorySummaries[0];
+        vm.NavigateToSubCategoryCommand.Execute(card);
+
+        Assert.Same(card.TargetNode, vm.SelectedCategory);
+        Assert.True(vm.ShowCategoryFields);
+        Assert.False(vm.ShowCategoryCards);
+    }
+
+    [Fact]
+    public async Task AdvancedTab_InitialState_NoCards()
+    {
+        var vm = CreateViewModelWithDiscoveredFields();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        Assert.False(vm.ShowCategoryCards);
+        Assert.False(vm.ShowCategoryFields);
+        Assert.Empty(vm.SubCategorySummaries);
     }
 
     // test doubles

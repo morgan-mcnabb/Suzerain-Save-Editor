@@ -300,4 +300,154 @@ public sealed class CategoryNodeViewModelTests
 
         Assert.Equal(2, node.FilteredCount);
     }
+
+    // IsParent
+
+    [Fact]
+    public void IsParent_LeafNode_False()
+    {
+        var node = CreateLeafNode();
+        Assert.False(node.IsParent);
+    }
+
+    [Fact]
+    public void IsParent_ParentNode_True()
+    {
+        var parent = CreateParentNode();
+        Assert.True(parent.IsParent);
+    }
+
+    // GetAllDescendantFields
+
+    [Fact]
+    public void GetAllDescendantFields_LeafNode_ReturnsOwnFields()
+    {
+        var node = CreateLeafNode();
+        var fields = node.GetAllDescendantFields();
+
+        Assert.Equal(3, fields.Count);
+    }
+
+    [Fact]
+    public void GetAllDescendantFields_ParentNode_ReturnsChildFields()
+    {
+        var parent = CreateParentNode();
+        var fields = parent.GetAllDescendantFields();
+
+        Assert.Equal(4, fields.Count); // 2 + 2 from children
+    }
+
+    [Fact]
+    public void GetAllDescendantFields_ThreeLevelTree_ReturnsAllDescendants()
+    {
+        var grandchild1 = CreateLeafNode("gc1", "GC1", 0,
+        [
+            MakeFieldVm("f1", "Field One"),
+            MakeFieldVm("f2", "Field Two")
+        ]);
+        var grandchild2 = CreateLeafNode("gc2", "GC2", 1,
+        [
+            MakeFieldVm("f3", "Field Three")
+        ]);
+        var child = new CategoryNodeViewModel("child", "Child", 0, [], [grandchild1, grandchild2]);
+        var root = new CategoryNodeViewModel("root", "Root", 0, [], [child]);
+
+        var fields = root.GetAllDescendantFields();
+
+        Assert.Equal(3, fields.Count);
+    }
+
+    [Fact]
+    public void GetAllDescendantFields_WithQuery_FiltersDescendants()
+    {
+        var grandchild1 = CreateLeafNode("gc1", "GC1", 0,
+        [
+            MakeFieldVm("f1", "Economy Stimulus"),
+            MakeFieldVm("f2", "Military Border")
+        ]);
+        var grandchild2 = CreateLeafNode("gc2", "GC2", 1,
+        [
+            MakeFieldVm("f3", "Economy Reform")
+        ]);
+        var child = new CategoryNodeViewModel("child", "Child", 0, [], [grandchild1, grandchild2]);
+        var root = new CategoryNodeViewModel("root", "Root", 0, [], [child]);
+
+        var fields = root.GetAllDescendantFields("Economy");
+
+        Assert.Equal(2, fields.Count);
+    }
+
+    // GetSubCategorySummaries
+
+    [Fact]
+    public void GetSubCategorySummaries_LeafNode_ReturnsEmpty()
+    {
+        var node = CreateLeafNode();
+        var summaries = node.GetSubCategorySummaries();
+
+        Assert.Empty(summaries);
+    }
+
+    [Fact]
+    public void GetSubCategorySummaries_ParentNode_ReturnsOnePerChild()
+    {
+        var parent = CreateParentNode();
+        var summaries = parent.GetSubCategorySummaries();
+
+        Assert.Equal(2, summaries.Count);
+        Assert.Equal("Situation", summaries[0].Label);
+        Assert.Equal("Policy", summaries[1].Label);
+    }
+
+    [Fact]
+    public void GetSubCategorySummaries_ReturnsCorrectFieldCounts()
+    {
+        var parent = CreateParentNode();
+        var summaries = parent.GetSubCategorySummaries();
+
+        Assert.Equal(2, summaries[0].FieldCount);
+        Assert.Equal(2, summaries[1].FieldCount);
+    }
+
+    [Fact]
+    public void GetSubCategorySummaries_TargetNodePointsToChild()
+    {
+        var parent = CreateParentNode();
+        var summaries = parent.GetSubCategorySummaries();
+
+        Assert.Same(parent.Children[0], summaries[0].TargetNode);
+        Assert.Same(parent.Children[1], summaries[1].TargetNode);
+    }
+
+    [Fact]
+    public void GetSubCategorySummaries_WithSearch_FiltersChildren()
+    {
+        var parent = CreateParentNode();
+        // apply filter first so Children collection is filtered
+        parent.ApplyFilter("Constitutional");
+        var summaries = parent.GetSubCategorySummaries("Constitutional");
+
+        // only Policy child has "Constitutional Reform"
+        Assert.Single(summaries);
+        Assert.Equal("Policy", summaries[0].Label);
+    }
+
+    [Fact]
+    public void GetSubCategorySummaries_WithSearch_ExcludesEmptyChildren()
+    {
+        var parent = CreateParentNode();
+        parent.ApplyFilter("NonExistent");
+        var summaries = parent.GetSubCategorySummaries("NonExistent");
+
+        Assert.Empty(summaries);
+    }
+
+    [Fact]
+    public void GetSubCategorySummaries_EmptySearch_ReturnsAll()
+    {
+        var parent = CreateParentNode();
+        var summaries = parent.GetSubCategorySummaries("");
+
+        Assert.Equal(2, summaries.Count);
+    }
 }

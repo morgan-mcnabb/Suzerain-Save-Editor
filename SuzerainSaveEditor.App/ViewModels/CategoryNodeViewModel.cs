@@ -49,7 +49,45 @@ public partial class CategoryNodeViewModel : ViewModelBase
 
     public bool IsLeaf => _allChildren.Count == 0;
 
+    public bool IsParent => _allChildren.Count > 0;
+
     public IReadOnlyList<FieldViewModel> AllFields => _allFields;
+
+    // collects all fields from this node and all descendants
+    public IReadOnlyList<FieldViewModel> GetAllDescendantFields(string? query = null)
+    {
+        if (IsLeaf)
+            return string.IsNullOrEmpty(query) ? _allFields : GetFilteredFields(query);
+
+        var result = new List<FieldViewModel>();
+        CollectDescendantFields(result, query);
+        return result;
+    }
+
+    private void CollectDescendantFields(List<FieldViewModel> result, string? query)
+    {
+        foreach (var field in _allFields)
+        {
+            if (string.IsNullOrEmpty(query) || FieldMatchesQuery(field, query))
+                result.Add(field);
+        }
+        foreach (var child in _allChildren)
+            child.CollectDescendantFields(result, query);
+    }
+
+    // builds summary cards for each child node (used by the parent dashboard)
+    public IReadOnlyList<SubCategorySummaryViewModel> GetSubCategorySummaries(string? searchQuery = null)
+    {
+        if (IsLeaf) return [];
+
+        var query = searchQuery?.Trim() ?? "";
+        var source = string.IsNullOrEmpty(query) ? _allChildren : Children.ToList();
+
+        return source
+            .Select(child => new SubCategorySummaryViewModel(child, string.IsNullOrEmpty(query) ? null : query))
+            .Where(s => s.FieldCount > 0)
+            .ToList();
+    }
 
     public CategoryNodeViewModel(
         string key,

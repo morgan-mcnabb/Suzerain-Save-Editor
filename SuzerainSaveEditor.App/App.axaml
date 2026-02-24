@@ -8,54 +8,210 @@
         <local:ViewLocator/>
     </Application.DataTemplates>
 
+    <Application.Resources>
+        <!-- surface colors -->
+        <SolidColorBrush x:Key="BgBase" Color="#1A1B1E" />
+        <SolidColorBrush x:Key="BgSurface" Color="#222327" />
+        <SolidColorBrush x:Key="BgElevated" Color="#2A2B30" />
+        <SolidColorBrush x:Key="BgHover" Color="#32333A" />
+        <SolidColorBrush x:Key="BgActive" Color="#3A3B42" />
+
+        <!-- accent colors -->
+        <SolidColorBrush x:Key="AccentPrimary" Color="#D4A54A" />
+        <SolidColorBrush x:Key="AccentPrimaryDim" Color="#B8912F" />
+        <SolidColorBrush x:Key="AccentPrimaryBg" Color="#2E2818" />
+        <SolidColorBrush x:Key="AccentSecondary" Color="#5B8DEF" />
+
+        <!-- semantic colors -->
+        <SolidColorBrush x:Key="StatusDirty" Color="#E8A838" />
+        <SolidColorBrush x:Key="StatusDirtyBg" Color="#2E2818" />
+        <SolidColorBrush x:Key="StatusValid" Color="#4ADE80" />
+        <SolidColorBrush x:Key="StatusError" Color="#EF4444" />
+        <SolidColorBrush x:Key="StatusErrorBg" Color="#2E1B1B" />
+
+        <!-- text colors -->
+        <SolidColorBrush x:Key="TextPrimary" Color="#EAEAEC" />
+        <SolidColorBrush x:Key="TextSecondary" Color="#A0A1A8" />
+        <SolidColorBrush x:Key="TextTertiary" Color="#6B6C73" />
+        <SolidColorBrush x:Key="TextOnAccent" Color="#1A1B1E" />
+
+        <!-- border colors -->
+        <SolidColorBrush x:Key="BorderSubtle" Color="#2F3037" />
+        <SolidColorBrush x:Key="BorderDefault" Color="#3A3B42" />
+        <SolidColorBrush x:Key="BorderStrong" Color="#4A4B52" />
+        <SolidColorBrush x:Key="BorderAccent" Color="#D4A54A" />
+
+        <!-- loading overlay -->
+        <SolidColorBrush x:Key="OverlayBackground" Color="#D91A1B1E" />
+
+        <!-- textbox theme overrides -->
+        <SolidColorBrush x:Key="TextControlBackground" Color="#222327" />
+        <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#2A2B30" />
+        <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#222327" />
+        <SolidColorBrush x:Key="TextControlBorderBrush" Color="#3A3B42" />
+        <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#4A4B52" />
+        <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#5B8DEF" />
+        <SolidColorBrush x:Key="TextControlForeground" Color="#EAEAEC" />
+        <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="#EAEAEC" />
+        <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#EAEAEC" />
+        <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#6B6C73" />
+        <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#6B6C73" />
+        <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#6B6C73" />
+
+        <!-- combobox theme overrides -->
+        <SolidColorBrush x:Key="ComboBoxBackground" Color="#222327" />
+        <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="#2A2B30" />
+        <SolidColorBrush x:Key="ComboBoxBackgroundPressed" Color="#222327" />
+        <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#3A3B42" />
+        <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="#4A4B52" />
+        <SolidColorBrush x:Key="ComboBoxBorderBrushPressed" Color="#3A3B42" />
+        <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#2A2B30" />
+        <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#3A3B42" />
+
+        <!-- toggle switch theme overrides -->
+        <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#D4A54A" />
+        <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="#B8912F" />
+        <SolidColorBrush x:Key="ToggleSwitchFillOnPressed" Color="#A07D28" />
+        <SolidColorBrush x:Key="ToggleSwitchStrokeOn" Color="#D4A54A" />
+        <SolidColorBrush x:Key="ToggleSwitchStrokeOnPointerOver" Color="#B8912F" />
+        <SolidColorBrush x:Key="ToggleSwitchStrokeOnPressed" Color="#A07D28" />
+        <SolidColorBrush x:Key="ToggleSwitchKnobFillOn" Color="#1A1B1E" />
+        <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPointerOver" Color="#1A1B1E" />
+        <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPressed" Color="#1A1B1E" />
+
+        <!-- accent button theme overrides (gold) -->
+        <SolidColorBrush x:Key="AccentButtonBackground" Color="#D4A54A" />
+        <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#B8912F" />
+        <SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#A07D28" />
+        <SolidColorBrush x:Key="AccentButtonBackgroundDisabled" Color="#3A3B42" />
+        <SolidColorBrush x:Key="AccentButtonBorderBrush" Color="#D4A54A" />
+        <SolidColorBrush x:Key="AccentButtonBorderBrushPointerOver" Color="#B8912F" />
+        <SolidColorBrush x:Key="AccentButtonBorderBrushPressed" Color="#A07D28" />
+        <SolidColorBrush x:Key="AccentButtonBorderBrushDisabled" Color="#3A3B42" />
+        <SolidColorBrush x:Key="AccentButtonForeground" Color="#1A1B1E" />
+        <SolidColorBrush x:Key="AccentButtonForegroundPointerOver" Color="#1A1B1E" />
+        <SolidColorBrush x:Key="AccentButtonForegroundPressed" Color="#1A1B1E" />
+        <SolidColorBrush x:Key="AccentButtonForegroundDisabled" Color="#6B6C73" />
+
+        <!-- regular button theme overrides (ghost style) -->
+        <SolidColorBrush x:Key="ButtonBackground" Color="Transparent" />
+        <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#32333A" />
+        <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#3A3B42" />
+        <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="Transparent" />
+        <SolidColorBrush x:Key="ButtonBorderBrush" Color="#3A3B42" />
+        <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="#4A4B52" />
+        <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="#4A4B52" />
+        <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="#2F3037" />
+        <SolidColorBrush x:Key="ButtonForeground" Color="#EAEAEC" />
+        <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="#EAEAEC" />
+        <SolidColorBrush x:Key="ButtonForegroundPressed" Color="#A0A1A8" />
+        <SolidColorBrush x:Key="ButtonForegroundDisabled" Color="#6B6C73" />
+
+        <!-- tab item theme overrides (underline style) -->
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundUnselected" Color="Transparent" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundSelected" Color="Transparent" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundUnselectedPointerOver" Color="Transparent" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundSelectedPointerOver" Color="Transparent" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundUnselectedPressed" Color="Transparent" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundSelectedPressed" Color="Transparent" />
+        <SolidColorBrush x:Key="TabItemHeaderForegroundUnselected" Color="#A0A1A8" />
+        <SolidColorBrush x:Key="TabItemHeaderForegroundSelected" Color="#EAEAEC" />
+        <SolidColorBrush x:Key="TabItemHeaderForegroundUnselectedPointerOver" Color="#EAEAEC" />
+        <SolidColorBrush x:Key="TabItemHeaderForegroundSelectedPointerOver" Color="#EAEAEC" />
+        <SolidColorBrush x:Key="TabItemHeaderForegroundUnselectedPressed" Color="#A0A1A8" />
+        <SolidColorBrush x:Key="TabItemHeaderForegroundSelectedPressed" Color="#EAEAEC" />
+        <SolidColorBrush x:Key="TabItemHeaderSelectedPipeFill" Color="#D4A54A" />
+
+        <!-- progress bar theme overrides -->
+        <SolidColorBrush x:Key="ProgressBarForeground" Color="#D4A54A" />
+        <SolidColorBrush x:Key="ProgressBarBackground" Color="#2F3037" />
+
+        <!-- toolbar icon geometries -->
+        <StreamGeometry x:Key="IconFolderOpen">M19,20H4C2.89,20 2,19.1 2,18V6C2,4.89 2.89,4 4,4H10L12,6H19A2,2 0 0,1 21,8H21L4,8V18L6.14,10H23.21L20.93,18.5C20.7,19.37 19.92,20 19,20Z</StreamGeometry>
+        <StreamGeometry x:Key="IconSave">M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z</StreamGeometry>
+        <StreamGeometry x:Key="IconUndo">M12.5,8C9.85,8 7.45,9 5.6,10.6L2,7V16H11L7.38,12.38C8.77,11.22 10.54,10.5 12.5,10.5C16.04,10.5 19.05,12.81 20.1,16L22.47,15.22C21.08,11.03 17.15,8 12.5,8Z</StreamGeometry>
+        <StreamGeometry x:Key="IconSearch">M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z</StreamGeometry>
+        <!-- status icons -->
+        <StreamGeometry x:Key="IconCheck">M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z</StreamGeometry>
+        <StreamGeometry x:Key="IconError">M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z</StreamGeometry>
+    </Application.Resources>
+
     <Application.Styles>
         <FluentTheme />
 
-        <!-- field row: subtle bottom border separator -->
-        <Style Selector="Border.field-row">
-            <Setter Property="Padding" Value="16,10" />
-            <Setter Property="BorderThickness" Value="0,0,0,1" />
-            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
-            <Setter Property="Background" Value="Transparent" />
+        <!-- textbox and combobox shape -->
+        <Style Selector="TextBox">
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="8,6" />
         </Style>
-        <Style Selector="Border.field-row:pointerover">
-            <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+        <Style Selector="ComboBox">
+            <Setter Property="CornerRadius" Value="4" />
         </Style>
 
-        <!-- dirty field row gets a left accent bar -->
+        <!-- compact toggle switch to match textbox height -->
+        <Style Selector="ToggleSwitch">
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+        </Style>
+
+        <!-- tab item text styling -->
+        <Style Selector="TabItem">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="20,12" />
+        </Style>
+
+        <!-- search textbox: rounded with surface background -->
+        <Style Selector="TextBox.search-box">
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Background" Value="{DynamicResource BgSurface}" />
+        </Style>
+
+        <!-- field row: subtle bottom border separator, consistent height -->
+        <Style Selector="Border.field-row">
+            <Setter Property="Padding" Value="18,10" />
+            <Setter Property="MinHeight" Value="52" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.15" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.field-row:pointerover">
+            <Setter Property="Background" Value="{DynamicResource BgHover}" />
+        </Style>
+
+        <!-- dirty field row gets a left accent bar + tinted background -->
         <Style Selector="Border.field-row-dirty">
-            <Setter Property="BorderBrush" Value="#F5A623" />
+            <Setter Property="BorderBrush" Value="{DynamicResource StatusDirty}" />
             <Setter Property="BorderThickness" Value="3,0,0,1" />
+            <Setter Property="Background" Value="{DynamicResource StatusDirtyBg}" />
+        </Style>
+
+        <!-- error field row gets a red-tinted background -->
+        <Style Selector="Border.field-row-error">
+            <Setter Property="Background" Value="{DynamicResource StatusErrorBg}" />
         </Style>
 
         <!-- toolbar area -->
         <Style Selector="Border.toolbar">
-            <Setter Property="Padding" Value="12,8" />
-            <Setter Property="Background" Value="{DynamicResource SolidBackgroundFillColorTertiaryBrush}" />
+            <Setter Property="Padding" Value="16,10" />
+            <Setter Property="Background" Value="{DynamicResource BgElevated}" />
             <Setter Property="BorderThickness" Value="0,0,0,1" />
-            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}" />
         </Style>
 
         <!-- status bar -->
         <Style Selector="Border.statusbar">
-            <Setter Property="Padding" Value="12,6" />
-            <Setter Property="Background" Value="{DynamicResource SolidBackgroundFillColorTertiaryBrush}" />
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="Background" Value="{DynamicResource BgElevated}" />
             <Setter Property="BorderThickness" Value="0,1,0,0" />
-            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}" />
         </Style>
 
-        <!-- welcome title -->
-        <Style Selector="TextBlock.welcome-title">
-            <Setter Property="FontSize" Value="32" />
-            <Setter Property="FontWeight" Value="Light" />
-            <Setter Property="HorizontalAlignment" Value="Center" />
-            <Setter Property="Opacity" Value="0.9" />
-        </Style>
-
-        <Style Selector="TextBlock.welcome-subtitle">
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="HorizontalAlignment" Value="Center" />
-            <Setter Property="Opacity" Value="0.45" />
-        </Style>
     </Application.Styles>
 </Application>

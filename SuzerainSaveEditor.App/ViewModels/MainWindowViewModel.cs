@@ -33,6 +33,7 @@ public partial class MainWindowViewModel : ViewModelBase
     // tree navigation for advanced tab
     public ObservableCollection<CategoryNodeViewModel> CategoryNodes { get; } = [];
     public ObservableCollection<FieldViewModel> SelectedCategoryFields { get; } = [];
+    public ObservableCollection<SubCategorySummaryViewModel> SubCategorySummaries { get; } = [];
 
     [ObservableProperty]
     private bool _isFileLoaded;
@@ -78,6 +79,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool _hasCategorySelected;
+
+    [ObservableProperty]
+    private bool _showCategoryCards;
+
+    [ObservableProperty]
+    private bool _showCategoryFields;
 
     public string WindowTitle => IsFileLoaded
         ? $"Suzerain Save Editor \u2014 {Path.GetFileName(FilePath)}{(IsDirty ? " *" : "")}"
@@ -183,21 +190,32 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(WindowTitle));
     }
 
-    partial void OnSelectedCategoryChanged(CategoryNodeViewModel? value)
+    partial void OnSelectedCategoryChanged(CategoryNodeViewModel? oldValue, CategoryNodeViewModel? newValue)
     {
-        PopulateSelectedCategoryFields();
+        if (oldValue is not null)
+            oldValue.IsSelected = false;
+
+        if (newValue is not null)
+        {
+            newValue.IsSelected = true;
+
+            // auto-expand/collapse parent nodes when selected
+            if (newValue.IsParent)
+                newValue.IsExpanded = !newValue.IsExpanded;
+        }
+
+        PopulateSelectedCategoryContent();
     }
 
     public void SelectCategory(CategoryNodeViewModel? node)
     {
-        // deselect previous
-        if (SelectedCategory is not null)
-            SelectedCategory.IsSelected = false;
-
         SelectedCategory = node;
+    }
 
-        if (node is not null)
-            node.IsSelected = true;
+    [RelayCommand]
+    private void NavigateToSubCategory(SubCategorySummaryViewModel card)
+    {
+        SelectCategory(card.TargetNode);
     }
 
     private async Task LoadFileAsync(string path)
@@ -278,8 +296,11 @@ public partial class MainWindowViewModel : ViewModelBase
         AdvancedFieldCount = _allAdvancedFields.Count;
         SelectedCategory = null;
         HasCategorySelected = false;
+        ShowCategoryCards = false;
+        ShowCategoryFields = false;
         SelectedCategoryPath = "";
         SelectedCategoryFields.Clear();
+        SubCategorySummaries.Clear();
         ApplyFilter();
     }
 
@@ -350,13 +371,16 @@ public partial class MainWindowViewModel : ViewModelBase
         return node;
     }
 
-    private void PopulateSelectedCategoryFields()
+    private void PopulateSelectedCategoryContent()
     {
         SelectedCategoryFields.Clear();
+        SubCategorySummaries.Clear();
 
         if (SelectedCategory is null)
         {
             HasCategorySelected = false;
+            ShowCategoryCards = false;
+            ShowCategoryFields = false;
             SelectedCategoryPath = "";
             return;
         }
@@ -365,9 +389,27 @@ public partial class MainWindowViewModel : ViewModelBase
         SelectedCategoryPath = SelectedCategory.BreadcrumbPath;
 
         var query = SearchText?.Trim() ?? "";
-        var fields = SelectedCategory.GetFilteredFields(query);
-        foreach (var field in fields)
-            SelectedCategoryFields.Add(field);
+
+        if (SelectedCategory.IsParent)
+        {
+            // parent node — show sub-category cards
+            ShowCategoryCards = true;
+            ShowCategoryFields = false;
+
+            var summaries = SelectedCategory.GetSubCategorySummaries(query);
+            foreach (var summary in summaries)
+                SubCategorySummaries.Add(summary);
+        }
+        else
+        {
+            // leaf node — show field editors
+            ShowCategoryCards = false;
+            ShowCategoryFields = true;
+
+            var fields = SelectedCategory.GetFilteredFields(query);
+            foreach (var field in fields)
+                SelectedCategoryFields.Add(field);
+        }
     }
 
     private void OnFieldValueChanged(string fieldId, string value)
@@ -425,7 +467,7 @@ public partial class MainWindowViewModel : ViewModelBase
         ApplyFilterToGroup(_allSordlandFields, SordlandFields);
         ApplyFilterToGroup(_allRiziaFields, RiziaFields);
         ApplyFilterToCategoryTree();
-        PopulateSelectedCategoryFields();
+        PopulateSelectedCategoryContent();
     }
 
     private void ApplyFilterToGroup(List<FieldViewModel> source, ObservableCollection<FieldViewModel> target)

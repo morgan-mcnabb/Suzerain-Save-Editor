@@ -9,6 +9,9 @@ public static partial class AdvancedFieldGrouper
     [GeneratedRegex(@"^GameCondition\.Turn(\d{2})_", RegexOptions.Compiled)]
     private static partial Regex TurnPattern();
 
+    [GeneratedRegex(@"^Turn\d{2}$", RegexOptions.Compiled)]
+    private static partial Regex TurnSubCategoryPattern();
+
     // minimum fields before a namespace gets sub-categorized
     private const int SubCategoryThreshold = 30;
 
@@ -20,7 +23,8 @@ public static partial class AdvancedFieldGrouper
         ["BaseGameIsolated"] = "Base Game Isolated",
         ["BaseGameUI"] = "Base Game UI",
         ["BaseGameText"] = "Base Game Text",
-        ["GameCondition"] = "Turns",
+        ["Turns"] = "Turns",
+        ["GameCondition"] = "Game Condition",
         ["RiziaDLC"] = "Rizia DLC",
         ["RiziaDLCSetup"] = "Rizia DLC Setup",
         ["RiziaDLCText"] = "Rizia DLC Text",
@@ -29,7 +33,11 @@ public static partial class AdvancedFieldGrouper
         ["RiziaDLCUI"] = "Rizia DLC UI",
         ["SharedSupport"] = "Shared Support",
         ["Opinion"] = "Opinions",
-        ["Relations"] = "Relations"
+        ["Relations"] = "Relations",
+        ["entity:Position"] = "Entity: Positions",
+        ["entity:CharacterCustomization"] = "Entity: Character Customization",
+        ["entity:Rizia"] = "Entity: Rizia",
+        ["entity:Page"] = "Entity: Page"
     };
 
     // namespace sort order — story-relevant namespaces first, support/meta last
@@ -48,7 +56,8 @@ public static partial class AdvancedFieldGrouper
         ["RiziaDLCUI"] = 24,
         ["RiziaDLCText"] = 25,
         ["SharedSupport"] = 30,
-        ["GameCondition"] = 40
+        ["GameCondition"] = 35,
+        ["Turns"] = 40
     };
 
     // classifies a field into namespace + sub-category
@@ -57,22 +66,44 @@ public static partial class AdvancedFieldGrouper
     {
         var key = ExtractKey(field);
 
-        // turn-prefixed: GameCondition.TurnXX_...
+        // turn-prefixed: GameCondition.TurnXX_... → unified Turns namespace
         var turnMatch = TurnPattern().Match(key);
         if (turnMatch.Success)
         {
             var turnNum = turnMatch.Groups[1].Value;
-            return ("GameCondition", $"Turn{turnNum}", "Turns", $"Turn {int.Parse(turnNum)}");
+            return ("Turns", $"Turn{turnNum}", "Turns", $"Turn {int.Parse(turnNum)}");
         }
 
-        // entity path
+        // entity path — group by first underscore prefix of nameInDatabase
         if (field.Path.StartsWith("entity:", StringComparison.Ordinal))
         {
             var entityKey = field.Path["entity:".Length..];
             var lastDot = entityKey.LastIndexOf('.');
             var nameInDb = lastDot >= 0 ? entityKey[..lastDot] : entityKey;
-            var label = NamespaceLabels.GetValueOrDefault(nameInDb)
-                        ?? FieldDiscoveryService.GenerateLabel(nameInDb);
+
+            var entityUs = nameInDb.IndexOf('_');
+            if (entityUs >= 0)
+            {
+                var prefix = nameInDb[..entityUs];
+
+                // TurnXX entities → unified Turns namespace
+                if (TurnSubCategoryPattern().IsMatch(prefix))
+                {
+                    var turnNum = prefix[4..]; // "01" from "Turn01"
+                    return ("Turns", $"Turn{turnNum}", "Turns", $"Turn {int.Parse(turnNum)}");
+                }
+
+                // non-turn entities → group by prefix
+                var nsKey = $"entity:{prefix}";
+                var nsLabel = NamespaceLabels.GetValueOrDefault(nsKey)
+                              ?? $"Entity: {FieldDiscoveryService.GenerateLabel(prefix)}";
+                var remainder = nameInDb[(entityUs + 1)..];
+                var subLabel = FieldDiscoveryService.GenerateLabel(remainder);
+                return (nsKey, nameInDb, nsLabel, subLabel);
+            }
+
+            // no underscore — standalone entity namespace
+            var label = FieldDiscoveryService.GenerateLabel(nameInDb);
             return ($"entity:{nameInDb}", null, $"Entity: {label}", null);
         }
 
@@ -85,11 +116,16 @@ public static partial class AdvancedFieldGrouper
             var nsLabel = NamespaceLabels.GetValueOrDefault(ns)
                           ?? FieldDiscoveryService.GenerateLabel(ns);
 
-            // extract sub-category: first underscore segment
+            // extract sub-category: first underscore segment, normalize TurnXX → Turns
             var firstUnderscore = afterDot.IndexOf('_');
             if (firstUnderscore >= 0)
             {
                 var subCat = afterDot[..firstUnderscore];
+                if (TurnSubCategoryPattern().IsMatch(subCat))
+                {
+                    var turnNum = subCat[4..]; // "01" from "Turn01"
+                    return ("Turns", $"Turn{turnNum}", "Turns", $"Turn {int.Parse(turnNum)}");
+                }
                 var subLabel = FieldDiscoveryService.GenerateLabel(subCat);
                 return (ns, subCat, nsLabel, subLabel);
             }
@@ -164,12 +200,50 @@ public static partial class AdvancedFieldGrouper
             }
 
             // build sub-category children
+            // turns: sort chronologically by key; others: sort by count descending
             var children = new List<FieldCategory>();
             var childSortIndex = 0;
+            var orderedSubs = nsKey == "Turns"
+                ? bucket.SubCategories.OrderBy(kvp => kvp.Key, StringComparer.Ordinal)
+                : bucket.SubCategories.OrderByDescending(kvp => kvp.Value.Fields.Count);
 
-            foreach (var (subKey, subBucket) in bucket.SubCategories
-                         .OrderByDescending(kvp => kvp.Value.Fields.Count))
+            foreach (var (subKey, subBucket) in orderedSubs)
             {
+                // for Turns: add 3rd-level source grouping when multiple sources exist
+                if (nsKey == "Turns")
+                {
+                    var sourceGroups = subBucket.Fields
+                        .GroupBy(f => DeriveSourceKey(f))
+                        .ToList();
+
+                    if (sourceGroups.Count > 1)
+                    {
+                        var grandChildren = sourceGroups
+                            .OrderBy(g => NamespaceSortOrder.GetValueOrDefault(g.Key, 500))
+                            .ThenBy(g => g.Key, StringComparer.Ordinal)
+                            .Select((g, idx) =>
+                            {
+                                var sourceLabel = NamespaceLabels.GetValueOrDefault(g.Key)
+                                                  ?? FieldDiscoveryService.GenerateLabel(g.Key);
+                                return new FieldCategory(
+                                    $"Turns.{subKey}.{g.Key}",
+                                    sourceLabel,
+                                    idx,
+                                    g.ToList(),
+                                    []);
+                            })
+                            .ToList();
+
+                        children.Add(new FieldCategory(
+                            $"{nsKey}.{subKey}",
+                            subBucket.Label,
+                            childSortIndex++,
+                            [],
+                            grandChildren));
+                        continue;
+                    }
+                }
+
                 children.Add(new FieldCategory(
                     $"{nsKey}.{subKey}",
                     subBucket.Label,
@@ -193,6 +267,33 @@ public static partial class AdvancedFieldGrouper
         }
 
         return result.OrderBy(c => c.SortOrder).ThenBy(c => c.Key, StringComparer.Ordinal).ToList();
+    }
+
+    // normalizes related namespaces into a single source group for turn sub-categories
+    private static readonly Dictionary<string, string> SourceKeyNormalization = new(StringComparer.Ordinal)
+    {
+        ["BaseGameIsolated"] = "BaseGame",
+        ["BaseGameSetup"] = "BaseGame",
+        ["BaseGameSupport"] = "BaseGame",
+        ["BaseGameUI"] = "BaseGame",
+        ["BaseGameText"] = "BaseGame",
+        ["RiziaDLCIsolated"] = "RiziaDLC",
+        ["RiziaDLCSetup"] = "RiziaDLC",
+        ["RiziaDLCSupport"] = "RiziaDLC",
+        ["RiziaDLCUI"] = "RiziaDLC",
+        ["RiziaDLCText"] = "RiziaDLC"
+    };
+
+    // derives the original namespace key for source grouping within turns
+    private static string DeriveSourceKey(FieldDefinition field)
+    {
+        if (field.Path.StartsWith("entity:", StringComparison.Ordinal))
+            return "Entities";
+
+        var key = ExtractKey(field);
+        var dot = key.IndexOf('.');
+        var rawKey = dot >= 0 ? key[..dot] : "Other";
+        return SourceKeyNormalization.GetValueOrDefault(rawKey, rawKey);
     }
 
     private static string ExtractKey(FieldDefinition field)
