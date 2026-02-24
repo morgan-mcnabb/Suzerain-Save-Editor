@@ -999,6 +999,31 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task RevertAll_RefreshesSubCategorySummaryDirtyCounts()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        // select a parent node to show cards
+        var parentNode = vm.CategoryNodes.FirstOrDefault(n => n.IsParent);
+        if (parentNode is null) return;
+        vm.SelectCategory(parentNode);
+        Assert.True(vm.ShowCategoryCards);
+
+        // edit a field that belongs to one of the sub-categories
+        var descendantField = parentNode.GetAllDescendantFields().First();
+        descendantField.BoolValue = !descendantField.BoolValue;
+        Assert.True(vm.IsDirty);
+
+        // cards should reflect the dirty field
+        Assert.Contains(vm.SubCategorySummaries, s => s.HasDirtyFields);
+
+        // revert and verify cards are refreshed with zero dirty counts
+        vm.RevertAllCommand.Execute(null);
+        Assert.DoesNotContain(vm.SubCategorySummaries, s => s.HasDirtyFields);
+    }
+
+    [Fact]
     public async Task Save_WithFilteredOutCategory_DoesNotSelectInvisibleNode()
     {
         var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());

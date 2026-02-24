@@ -187,6 +187,7 @@ public partial class MainWindowViewModel : ViewModelBase
             field.ResetToOriginal();
 
         UpdateDirtyState();
+        PopulateSelectedCategoryContent();
         StatusMessage = "All changes reverted";
     }
 
@@ -501,6 +502,10 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         UpdateDirtyState();
+
+        // refresh sub-category cards so dirty pills stay current
+        if (ShowCategoryCards)
+            RefreshSubCategorySummaries();
     }
 
     private void UpdateDirtyState()
@@ -600,6 +605,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // refresh content panel for the (restored or cleared) selection
         PopulateSelectedCategoryContent();
+    }
+
+    private void RefreshSubCategorySummaries()
+    {
+        foreach (var summary in SubCategorySummaries)
+            summary.RefreshDirtyCount();
     }
 
     private void SelectCategoryByKey(string key)
