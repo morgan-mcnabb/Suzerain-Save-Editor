@@ -499,7 +499,6 @@ public partial class MainWindowViewModel : ViewModelBase
         ApplyFilterToGroup(_allSordlandFields, SordlandFields);
         ApplyFilterToGroup(_allRiziaFields, RiziaFields);
         ApplyFilterToCategoryTree();
-        PopulateSelectedCategoryContent();
     }
 
     private void ApplyFilterToGroup(List<FieldViewModel> source, ObservableCollection<FieldViewModel> target)
@@ -536,9 +535,13 @@ public partial class MainWindowViewModel : ViewModelBase
             }
         }
 
-        // clear selection if the selected node was filtered out
-        if (SelectedCategory is not null && !SelectedCategory.IsVisible)
-            SelectedCategory = null;
+        if (SelectedCategory is not null)
+        {
+            if (!SelectedCategory.IsVisible)
+                SelectedCategory = null;
+            else
+                PopulateSelectedCategoryContent();
+        }
     }
 
     private void SelectCategoryByKey(string key)
