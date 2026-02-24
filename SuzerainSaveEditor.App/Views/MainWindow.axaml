@@ -31,6 +31,15 @@
                 </ControlTemplate>
             </Setter>
         </Style>
+
+        <!-- category tree item styling -->
+        <Style Selector="TreeView.category-tree">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="TreeView.category-tree TreeViewItem">
+            <Setter Property="Padding" Value="4,2" />
+        </Style>
     </Window.Styles>
 
     <Design.DataContext>
@@ -267,11 +276,70 @@
                                            Opacity="0.6" />
                             </StackPanel>
                         </TabItem.Header>
-                        <ListBox Classes="field-list"
-                                 ItemsSource="{Binding AdvancedFields}"
-                                 ItemTemplate="{StaticResource FieldEditorTemplate}"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                 Padding="8,4" />
+
+                        <!-- two-panel layout: tree sidebar + content -->
+                        <Grid ColumnDefinitions="280,1,*">
+                            <!-- left: category tree -->
+                            <Border Grid.Column="0"
+                                    BorderThickness="0,0,0,0"
+                                    Padding="4">
+                                <TreeView Classes="category-tree"
+                                          ItemsSource="{Binding CategoryNodes}"
+                                          SelectedItem="{Binding SelectedCategory, Mode=TwoWay}"
+                                          AutoScrollToSelectedItem="True">
+                                    <TreeView.ItemTemplate>
+                                        <TreeDataTemplate x:DataType="vm:CategoryNodeViewModel"
+                                                          ItemsSource="{Binding Children}">
+                                            <TextBlock Text="{Binding HeaderText}"
+                                                       FontSize="13"
+                                                       Padding="2,3" />
+                                        </TreeDataTemplate>
+                                    </TreeView.ItemTemplate>
+                                </TreeView>
+                            </Border>
+
+                            <!-- separator -->
+                            <Border Grid.Column="1"
+                                    Background="{DynamicResource ControlStrokeColorDefaultBrush}" />
+
+                            <!-- right: selected category fields -->
+                            <DockPanel Grid.Column="2">
+                                <!-- breadcrumb header -->
+                                <Border DockPanel.Dock="Top"
+                                        Padding="16,10"
+                                        BorderThickness="0,0,0,1"
+                                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                        IsVisible="{Binding HasCategorySelected}">
+                                    <TextBlock Text="{Binding SelectedCategoryPath}"
+                                               FontSize="14"
+                                               FontWeight="SemiBold"
+                                               Opacity="0.8" />
+                                </Border>
+
+                                <!-- empty state: no category selected -->
+                                <StackPanel IsVisible="{Binding !HasCategorySelected}"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Spacing="8">
+                                    <TextBlock Text="Select a category from the tree"
+                                               FontSize="14"
+                                               Opacity="0.4"
+                                               HorizontalAlignment="Center" />
+                                    <TextBlock Text="Browse variables organized by namespace and sub-category"
+                                               FontSize="12"
+                                               Opacity="0.3"
+                                               HorizontalAlignment="Center" />
+                                </StackPanel>
+
+                                <!-- field list -->
+                                <ListBox Classes="field-list"
+                                         ItemsSource="{Binding SelectedCategoryFields}"
+                                         ItemTemplate="{StaticResource FieldEditorTemplate}"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         Padding="8,4"
+                                         IsVisible="{Binding HasCategorySelected}" />
+                            </DockPanel>
+                        </Grid>
                     </TabItem>
                 </TabControl>
             </Panel>

@@ -23,12 +23,16 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly List<FieldViewModel> _allSordlandFields = [];
     private readonly List<FieldViewModel> _allRiziaFields = [];
     private readonly List<FieldViewModel> _allAdvancedFields = [];
+    private readonly List<CategoryNodeViewModel> _allCategoryNodes = [];
 
     // observable collections bound to UI (filtered by search)
     public ObservableCollection<FieldViewModel> GeneralFields { get; } = [];
     public ObservableCollection<FieldViewModel> SordlandFields { get; } = [];
     public ObservableCollection<FieldViewModel> RiziaFields { get; } = [];
-    public ObservableCollection<FieldViewModel> AdvancedFields { get; } = [];
+
+    // tree navigation for advanced tab
+    public ObservableCollection<CategoryNodeViewModel> CategoryNodes { get; } = [];
+    public ObservableCollection<FieldViewModel> SelectedCategoryFields { get; } = [];
 
     [ObservableProperty]
     private bool _isFileLoaded;
@@ -65,6 +69,15 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private int _advancedFieldCount;
+
+    [ObservableProperty]
+    private CategoryNodeViewModel? _selectedCategory;
+
+    [ObservableProperty]
+    private string _selectedCategoryPath = "";
+
+    [ObservableProperty]
+    private bool _hasCategorySelected;
 
     public string WindowTitle => IsFileLoaded
         ? $"Suzerain Save Editor \u2014 {Path.GetFileName(FilePath)}{(IsDirty ? " *" : "")}"
@@ -118,9 +131,14 @@ public partial class MainWindowViewModel : ViewModelBase
             // preserve tab selection and search, reload to reset dirty state
             var savedTab = SelectedGroupIndex;
             var savedSearch = SearchText;
+            var savedCategoryKey = SelectedCategory?.Key;
             await LoadFileAsync(_editSession.FilePath);
             SelectedGroupIndex = savedTab;
             SearchText = savedSearch;
+
+            // restore category selection
+            if (savedCategoryKey is not null)
+                SelectCategoryByKey(savedCategoryKey);
 
             StatusMessage = "Saved successfully";
         }
@@ -165,6 +183,23 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(WindowTitle));
     }
 
+    partial void OnSelectedCategoryChanged(CategoryNodeViewModel? value)
+    {
+        PopulateSelectedCategoryFields();
+    }
+
+    public void SelectCategory(CategoryNodeViewModel? node)
+    {
+        // deselect previous
+        if (SelectedCategory is not null)
+            SelectedCategory.IsSelected = false;
+
+        SelectedCategory = node;
+
+        if (node is not null)
+            node.IsSelected = true;
+    }
+
     private async Task LoadFileAsync(string path)
     {
         try
@@ -202,6 +237,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _allSordlandFields.Clear();
         _allRiziaFields.Clear();
         _allAdvancedFields.Clear();
+        _allCategoryNodes.Clear();
 
         var schema = _activeSchema ?? _schemaService;
 
@@ -236,8 +272,102 @@ public partial class MainWindowViewModel : ViewModelBase
             }
         }
 
+        // build hierarchical category tree for advanced fields
+        BuildCategoryTree(schema);
+
         AdvancedFieldCount = _allAdvancedFields.Count;
+        SelectedCategory = null;
+        HasCategorySelected = false;
+        SelectedCategoryPath = "";
+        SelectedCategoryFields.Clear();
         ApplyFilter();
+    }
+
+    private void BuildCategoryTree(ISchemaService schema)
+    {
+        // get field definitions for advanced fields
+        var advancedDefs = _allAdvancedFields
+            .Select(vm => schema.GetById(vm.FieldId))
+            .Where(d => d is not null)
+            .Cast<FieldDefinition>()
+            .ToList();
+
+        // build hierarchical categories
+        var categories = AdvancedFieldGrouper.GroupFieldsHierarchical(advancedDefs);
+
+        // map FieldDefinition → FieldViewModel for quick lookup
+        var vmLookup = _allAdvancedFields.ToDictionary(vm => vm.FieldId, StringComparer.Ordinal);
+
+        // convert FieldCategory tree → CategoryNodeViewModel tree
+        foreach (var category in categories)
+        {
+            var node = BuildCategoryNode(category, vmLookup, parent: null);
+            _allCategoryNodes.Add(node);
+        }
+    }
+
+    private static CategoryNodeViewModel BuildCategoryNode(
+        FieldCategory category,
+        Dictionary<string, FieldViewModel> vmLookup,
+        CategoryNodeViewModel? parent)
+    {
+        // resolve field VMs for this category's leaf fields
+        var fieldVms = new List<FieldViewModel>();
+        foreach (var def in category.Fields)
+        {
+            if (vmLookup.TryGetValue(def.Id, out var vm))
+                fieldVms.Add(vm);
+        }
+
+        // recursively build children (pass null parent initially, then set after construction)
+        var childNodes = new List<CategoryNodeViewModel>();
+        var node = new CategoryNodeViewModel(
+            category.Key,
+            category.Label,
+            category.SortOrder,
+            fieldVms,
+            [], // will populate children after
+            parent);
+
+        foreach (var childCategory in category.Children)
+        {
+            var childNode = BuildCategoryNode(childCategory, vmLookup, parent: node);
+            childNodes.Add(childNode);
+        }
+
+        // rebuild with actual children
+        if (childNodes.Count > 0)
+        {
+            node = new CategoryNodeViewModel(
+                category.Key,
+                category.Label,
+                category.SortOrder,
+                fieldVms,
+                childNodes,
+                parent);
+        }
+
+        return node;
+    }
+
+    private void PopulateSelectedCategoryFields()
+    {
+        SelectedCategoryFields.Clear();
+
+        if (SelectedCategory is null)
+        {
+            HasCategorySelected = false;
+            SelectedCategoryPath = "";
+            return;
+        }
+
+        HasCategorySelected = true;
+        SelectedCategoryPath = SelectedCategory.BreadcrumbPath;
+
+        var query = SearchText?.Trim() ?? "";
+        var fields = SelectedCategory.GetFilteredFields(query);
+        foreach (var field in fields)
+            SelectedCategoryFields.Add(field);
     }
 
     private void OnFieldValueChanged(string fieldId, string value)
@@ -294,7 +424,8 @@ public partial class MainWindowViewModel : ViewModelBase
         ApplyFilterToGroup(_allGeneralFields, GeneralFields);
         ApplyFilterToGroup(_allSordlandFields, SordlandFields);
         ApplyFilterToGroup(_allRiziaFields, RiziaFields);
-        ApplyFilterToGroup(_allAdvancedFields, AdvancedFields);
+        ApplyFilterToCategoryTree();
+        PopulateSelectedCategoryFields();
     }
 
     private void ApplyFilterToGroup(List<FieldViewModel> source, ObservableCollection<FieldViewModel> target)
@@ -312,6 +443,42 @@ public partial class MainWindowViewModel : ViewModelBase
                 target.Add(field);
             }
         }
+    }
+
+    private void ApplyFilterToCategoryTree()
+    {
+        var query = SearchText?.Trim() ?? "";
+        var isSearching = !string.IsNullOrEmpty(query);
+
+        CategoryNodes.Clear();
+        foreach (var node in _allCategoryNodes)
+        {
+            node.ApplyFilter(query);
+            if (node.IsVisible)
+            {
+                if (isSearching)
+                    node.IsExpanded = true;
+                CategoryNodes.Add(node);
+            }
+        }
+    }
+
+    private void SelectCategoryByKey(string key)
+    {
+        var node = FindNodeByKey(_allCategoryNodes, key);
+        if (node is not null)
+            SelectCategory(node);
+    }
+
+    private static CategoryNodeViewModel? FindNodeByKey(IEnumerable<CategoryNodeViewModel> nodes, string key)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.Key == key) return node;
+            var found = FindNodeByKey(node.Children, key);
+            if (found is not null) return found;
+        }
+        return null;
     }
 
     private FieldViewModel? FindFieldViewModel(string fieldId)

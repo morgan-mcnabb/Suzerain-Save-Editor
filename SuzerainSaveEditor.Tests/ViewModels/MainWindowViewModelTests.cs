@@ -83,6 +83,43 @@ public sealed class MainWindowViewModelTests
         return new MainWindowViewModel(saveFileService, _schema, _resolver, fileDialogService, discoveryService);
     }
 
+    // helper to find a field across all category nodes (recursive)
+    private static FieldViewModel? FindAdvancedField(MainWindowViewModel vm, string fieldId)
+    {
+        return FindFieldInNodes(vm.CategoryNodes, fieldId);
+    }
+
+    private static FieldViewModel? FindFieldInNodes(
+        IEnumerable<CategoryNodeViewModel> nodes, string fieldId)
+    {
+        foreach (var node in nodes)
+        {
+            var found = node.AllFields.FirstOrDefault(f => f.FieldId == fieldId);
+            if (found is not null) return found;
+
+            found = FindFieldInNodes(node.Children, fieldId);
+            if (found is not null) return found;
+        }
+        return null;
+    }
+
+    // helper to count all fields across all category nodes (recursive)
+    private static int CountAdvancedFields(MainWindowViewModel vm)
+    {
+        return CountFieldsInNodes(vm.CategoryNodes);
+    }
+
+    private static int CountFieldsInNodes(IEnumerable<CategoryNodeViewModel> nodes)
+    {
+        var count = 0;
+        foreach (var node in nodes)
+        {
+            count += node.AllFields.Count;
+            count += CountFieldsInNodes(node.Children);
+        }
+        return count;
+    }
+
     // initial state
     [Fact]
     public void InitialState_NotLoaded_NotDirty()
@@ -97,7 +134,7 @@ public sealed class MainWindowViewModelTests
         Assert.Empty(vm.GeneralFields);
         Assert.Empty(vm.SordlandFields);
         Assert.Empty(vm.RiziaFields);
-        Assert.Empty(vm.AdvancedFields);
+        Assert.Empty(vm.CategoryNodes);
     }
 
     // open command
@@ -495,9 +532,67 @@ public sealed class MainWindowViewModelTests
         ];
     }
 
-    private MainWindowViewModel CreateViewModelWithDiscoveredFields()
+    private static IReadOnlyList<FieldDefinition> CreateDiscoveredFieldsWithTurns()
     {
-        var discovered = CreateDiscoveredFields();
+        return
+        [
+            new FieldDefinition
+            {
+                Id = "discovered.var.GameCondition.Turn01_A_PoliticalOverview",
+                Path = "variable:GameCondition.Turn01_A_PoliticalOverview",
+                Label = "Political Overview",
+                Group = FieldGroup.Advanced,
+                Type = FieldType.Bool,
+                Source = FieldSource.Variable,
+                Description = "Turn 01 > General | GameCondition.Turn01_A_PoliticalOverview"
+            },
+            new FieldDefinition
+            {
+                Id = "discovered.var.GameCondition.Turn01_EnT_BudgetOne",
+                Path = "variable:GameCondition.Turn01_EnT_BudgetOne",
+                Label = "Budget One",
+                Group = FieldGroup.Advanced,
+                Type = FieldType.Bool,
+                Source = FieldSource.Variable,
+                Description = "Turn 01 > Economy & Trade | GameCondition.Turn01_EnT_BudgetOne"
+            },
+            new FieldDefinition
+            {
+                Id = "discovered.var.GameCondition.Turn02_FPnT_DiplomacyOverview",
+                Path = "variable:GameCondition.Turn02_FPnT_DiplomacyOverview",
+                Label = "Diplomacy Overview",
+                Group = FieldGroup.Advanced,
+                Type = FieldType.Bool,
+                Source = FieldSource.Variable,
+                Description = "Turn 02 > Foreign Policy & Treaties | GameCondition.Turn02_FPnT_DiplomacyOverview"
+            },
+            new FieldDefinition
+            {
+                Id = "discovered.var.Custom.TestBool",
+                Path = "variable:Custom.TestBool",
+                Label = "Test Bool",
+                Group = FieldGroup.Advanced,
+                Type = FieldType.Bool,
+                Source = FieldSource.Variable,
+                Description = "Variable: Custom.TestBool"
+            },
+            new FieldDefinition
+            {
+                Id = "discovered.entity.Custom_Ent.Score",
+                Path = "entity:Custom_Ent.Score",
+                Label = "Score",
+                Group = FieldGroup.Advanced,
+                Type = FieldType.String,
+                Source = FieldSource.EntityUpdate,
+                Description = "Entity: Custom_Ent.Score"
+            }
+        ];
+    }
+
+    private MainWindowViewModel CreateViewModelWithDiscoveredFields(
+        IReadOnlyList<FieldDefinition>? discoveredFields = null)
+    {
+        var discovered = discoveredFields ?? CreateDiscoveredFields();
 
         // build a document that includes both schema fields AND the discovered ones
         var variables = new List<LuaVariable>();
@@ -534,9 +629,29 @@ public sealed class MainWindowViewModelTests
         }
 
         // add discovered variable/entity entries to the document
-        variables.Add(new LuaVariable("Custom.TestBool", new LuaValue.Bool(true)));
-        variables.Add(new LuaVariable("Custom.TestInt", new LuaValue.Int(42)));
-        entities.Add(new EntityUpdate("Custom_Ent", "Score", "100"));
+        foreach (var d in discovered)
+        {
+            if (d.Source == FieldSource.Variable)
+            {
+                var key = d.Path["variable:".Length..];
+                LuaValue value = d.Type switch
+                {
+                    FieldType.Bool => new LuaValue.Bool(true),
+                    FieldType.Int => new LuaValue.Int(42),
+                    FieldType.String => new LuaValue.Str("test_value"),
+                    _ => new LuaValue.Str("")
+                };
+                variables.Add(new LuaVariable(key, value));
+            }
+            else if (d.Source == FieldSource.EntityUpdate)
+            {
+                var entityPath = d.Path["entity:".Length..];
+                var lastDot = entityPath.LastIndexOf('.');
+                var nameInDb = entityPath[..lastDot];
+                var fieldName = entityPath[(lastDot + 1)..];
+                entities.Add(new EntityUpdate(nameInDb, fieldName, "100"));
+            }
+        }
 
         var doc = new SaveDocument
         {
@@ -560,7 +675,7 @@ public sealed class MainWindowViewModelTests
         var vm = CreateViewModelWithDiscoveredFields();
         await vm.OpenCommand.ExecuteAsync(null);
 
-        Assert.Equal(3, vm.AdvancedFields.Count);
+        Assert.Equal(3, CountAdvancedFields(vm));
         Assert.Equal(3, vm.AdvancedFieldCount);
     }
 
@@ -570,7 +685,7 @@ public sealed class MainWindowViewModelTests
         var vm = CreateViewModel();
         await vm.OpenCommand.ExecuteAsync(null);
 
-        Assert.Empty(vm.AdvancedFields);
+        Assert.Empty(vm.CategoryNodes);
         Assert.Equal(0, vm.AdvancedFieldCount);
     }
 
@@ -586,36 +701,13 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task AdvancedTab_SearchFiltersAdvancedFields()
-    {
-        var vm = CreateViewModelWithDiscoveredFields();
-        await vm.OpenCommand.ExecuteAsync(null);
-
-        vm.SearchText = "Score";
-
-        Assert.Single(vm.AdvancedFields);
-        Assert.Equal("discovered.entity.Custom_Ent.Score", vm.AdvancedFields[0].FieldId);
-    }
-
-    [Fact]
-    public async Task AdvancedTab_SearchByDescription()
-    {
-        var vm = CreateViewModelWithDiscoveredFields();
-        await vm.OpenCommand.ExecuteAsync(null);
-
-        vm.SearchText = "Custom.TestBool";
-
-        Assert.Single(vm.AdvancedFields);
-        Assert.Equal("discovered.var.Custom.TestBool", vm.AdvancedFields[0].FieldId);
-    }
-
-    [Fact]
     public async Task AdvancedTab_EditField_UpdatesDirtyState()
     {
         var vm = CreateViewModelWithDiscoveredFields();
         await vm.OpenCommand.ExecuteAsync(null);
 
-        var boolField = vm.AdvancedFields.First(f => f.FieldId == "discovered.var.Custom.TestBool");
+        var boolField = FindAdvancedField(vm, "discovered.var.Custom.TestBool");
+        Assert.NotNull(boolField);
         boolField.BoolValue = false;
 
         Assert.True(vm.IsDirty);
@@ -628,7 +720,8 @@ public sealed class MainWindowViewModelTests
         var vm = CreateViewModelWithDiscoveredFields();
         await vm.OpenCommand.ExecuteAsync(null);
 
-        var boolField = vm.AdvancedFields.First(f => f.FieldId == "discovered.var.Custom.TestBool");
+        var boolField = FindAdvancedField(vm, "discovered.var.Custom.TestBool");
+        Assert.NotNull(boolField);
         var original = boolField.Value;
         boolField.BoolValue = !boolField.BoolValue;
         Assert.True(vm.IsDirty);
@@ -645,14 +738,124 @@ public sealed class MainWindowViewModelTests
         var vm = CreateViewModelWithDiscoveredFields();
         await vm.OpenCommand.ExecuteAsync(null);
 
-        var boolField = vm.AdvancedFields.First(f => f.FieldId == "discovered.var.Custom.TestBool");
+        var boolField = FindAdvancedField(vm, "discovered.var.Custom.TestBool");
+        Assert.NotNull(boolField);
         Assert.Equal("True", boolField.Value);
 
-        var intField = vm.AdvancedFields.First(f => f.FieldId == "discovered.var.Custom.TestInt");
+        var intField = FindAdvancedField(vm, "discovered.var.Custom.TestInt");
+        Assert.NotNull(intField);
         Assert.Equal("42", intField.Value);
 
-        var entityField = vm.AdvancedFields.First(f => f.FieldId == "discovered.entity.Custom_Ent.Score");
+        var entityField = FindAdvancedField(vm, "discovered.entity.Custom_Ent.Score");
+        Assert.NotNull(entityField);
         Assert.Equal("100", entityField.Value);
+    }
+
+    // category tree structure
+    [Fact]
+    public async Task AdvancedTab_CategoryNodesGroupedCorrectly()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        // should have category nodes for: Custom, GameCondition, entity:Custom_Ent
+        Assert.True(vm.CategoryNodes.Count >= 2);
+
+        // GameCondition should contain turn fields
+        var gc = vm.CategoryNodes.FirstOrDefault(n => n.Key == "GameCondition");
+        Assert.NotNull(gc);
+    }
+
+    [Fact]
+    public async Task AdvancedTab_CategoryNodesStartCollapsed()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        Assert.All(vm.CategoryNodes, n => Assert.False(n.IsExpanded));
+    }
+
+    [Fact]
+    public async Task AdvancedTab_SearchFiltersCategoryTree()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.SearchText = "Diplomacy";
+
+        // only nodes with matching fields should be visible
+        Assert.True(vm.CategoryNodes.Count >= 1);
+        var gc = vm.CategoryNodes.FirstOrDefault(n => n.Key == "GameCondition");
+        Assert.NotNull(gc);
+    }
+
+    [Fact]
+    public async Task AdvancedTab_SearchExpandsMatchingNodes()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.SearchText = "Diplomacy";
+
+        var gc = vm.CategoryNodes.FirstOrDefault(n => n.Key == "GameCondition");
+        Assert.NotNull(gc);
+        Assert.True(gc.IsExpanded);
+    }
+
+    [Fact]
+    public async Task AdvancedTab_CategoryNodeHeaderShowsCount()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var gc = vm.CategoryNodes.FirstOrDefault(n => n.Key == "GameCondition");
+        Assert.NotNull(gc);
+        Assert.Contains("Turns", gc.HeaderText);
+    }
+
+    // category selection
+    [Fact]
+    public async Task SelectCategory_PopulatesSelectedCategoryFields()
+    {
+        var vm = CreateViewModelWithDiscoveredFields();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        // find a leaf node to select
+        var leafNode = vm.CategoryNodes.FirstOrDefault(n => n.IsLeaf && n.AllFields.Count > 0);
+        Assert.NotNull(leafNode);
+
+        vm.SelectCategory(leafNode);
+
+        Assert.True(vm.HasCategorySelected);
+        Assert.NotEmpty(vm.SelectedCategoryFields);
+        Assert.NotEmpty(vm.SelectedCategoryPath);
+    }
+
+    [Fact]
+    public async Task SelectCategory_Null_ClearsSelection()
+    {
+        var vm = CreateViewModelWithDiscoveredFields();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var leafNode = vm.CategoryNodes.FirstOrDefault(n => n.IsLeaf && n.AllFields.Count > 0);
+        vm.SelectCategory(leafNode);
+        Assert.True(vm.HasCategorySelected);
+
+        vm.SelectCategory(null);
+
+        Assert.False(vm.HasCategorySelected);
+        Assert.Empty(vm.SelectedCategoryFields);
+    }
+
+    [Fact]
+    public async Task AdvancedTab_InitialState_NoCategorySelected()
+    {
+        var vm = CreateViewModelWithDiscoveredFields();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        Assert.False(vm.HasCategorySelected);
+        Assert.Empty(vm.SelectedCategoryFields);
+        Assert.Equal("", vm.SelectedCategoryPath);
     }
 
     // test doubles

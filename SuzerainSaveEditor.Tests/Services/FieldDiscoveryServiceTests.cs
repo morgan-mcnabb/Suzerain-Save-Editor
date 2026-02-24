@@ -259,4 +259,126 @@ public sealed class FieldDiscoveryServiceTests
         Assert.Equal(FieldType.Decimal, discovered.First(f => f.Id.EndsWith("NumVar")).Type);
         Assert.Equal(FieldType.String, discovered.First(f => f.Id.EndsWith("StrVar")).Type);
     }
+
+    // GenerateAdvancedLabelAndDescription tests
+
+    [Fact]
+    public void AdvancedLabel_TurnPrefixed_StripsAllPrefixes()
+    {
+        var (label, _) = FieldDiscoveryService.GenerateAdvancedLabelAndDescription(
+            "GameCondition.Turn01_A_PoliticalOverview");
+        Assert.Equal("Political Overview", label);
+    }
+
+    [Fact]
+    public void AdvancedLabel_TurnPrefixed_WithEnTCategory()
+    {
+        var (label, _) = FieldDiscoveryService.GenerateAdvancedLabelAndDescription(
+            "GameCondition.Turn03_EnT_TradeAgreement");
+        Assert.Equal("Trade Agreement", label);
+    }
+
+    [Fact]
+    public void AdvancedLabel_TurnPrefixed_WithPersonalCategory()
+    {
+        var (label, _) = FieldDiscoveryService.GenerateAdvancedLabelAndDescription(
+            "GameCondition.Turn05_Personal_Ball");
+        Assert.Equal("Ball", label);
+    }
+
+    [Fact]
+    public void AdvancedLabel_TurnPrefixed_WithFPnTCategory()
+    {
+        var (label, _) = FieldDiscoveryService.GenerateAdvancedLabelAndDescription(
+            "GameCondition.Turn02_FPnT_DiplomacyOverview");
+        Assert.Equal("Diplomacy Overview", label);
+    }
+
+    [Fact]
+    public void AdvancedLabel_TurnPrefixed_WithLateBriefCategory()
+    {
+        var (label, _) = FieldDiscoveryService.GenerateAdvancedLabelAndDescription(
+            "GameCondition.Turn08_LateBrief_ZilleNegotiations");
+        Assert.Equal("Zille Negotiations", label);
+    }
+
+    [Fact]
+    public void AdvancedLabel_TurnPrefixed_UnknownCategory_PreservesInLabel()
+    {
+        var (label, _) = FieldDiscoveryService.GenerateAdvancedLabelAndDescription(
+            "GameCondition.Turn01_Unknown_SomeEvent");
+        // "Unknown_SomeEvent" passed to GenerateLabel → "Unknown Some Event"
+        Assert.Equal("Unknown Some Event", label);
+    }
+
+    [Fact]
+    public void AdvancedDescription_TurnPrefixed_IncludesTurnAndCategory()
+    {
+        var (_, description) = FieldDiscoveryService.GenerateAdvancedLabelAndDescription(
+            "GameCondition.Turn01_A_PoliticalOverview");
+        Assert.Equal("Turn 01 > General | GameCondition.Turn01_A_PoliticalOverview", description);
+    }
+
+    [Fact]
+    public void AdvancedDescription_TurnPrefixed_EnTCategory()
+    {
+        var (_, description) = FieldDiscoveryService.GenerateAdvancedLabelAndDescription(
+            "GameCondition.Turn03_EnT_BudgetOne");
+        Assert.Equal("Turn 03 > Economy & Trade | GameCondition.Turn03_EnT_BudgetOne", description);
+    }
+
+    [Fact]
+    public void AdvancedDescription_TurnPrefixed_UnknownCategory()
+    {
+        var (_, description) = FieldDiscoveryService.GenerateAdvancedLabelAndDescription(
+            "GameCondition.Turn01_Unknown_SomeEvent");
+        // no known category → just turn number
+        Assert.Equal("Turn 01 | GameCondition.Turn01_Unknown_SomeEvent", description);
+    }
+
+    [Fact]
+    public void AdvancedLabel_NonTurn_DotNamespaced_SameAsGenerateLabel()
+    {
+        var (label, _) = FieldDiscoveryService.GenerateAdvancedLabelAndDescription(
+            "BaseGame.GovernmentBudget");
+        Assert.Equal("Government Budget", label);
+    }
+
+    [Fact]
+    public void AdvancedDescription_NonTurn_IncludesFullKey()
+    {
+        var (_, description) = FieldDiscoveryService.GenerateAdvancedLabelAndDescription(
+            "BaseGame.GovernmentBudget");
+        Assert.Equal("Variable: BaseGame.GovernmentBudget", description);
+    }
+
+    [Fact]
+    public void AdvancedLabel_NonTurn_UnderscoreNamespaced_StripsPrefix()
+    {
+        var (label, _) = FieldDiscoveryService.GenerateAdvancedLabelAndDescription(
+            "Opinion_OldGuard");
+        Assert.Equal("Old Guard", label);
+    }
+
+    [Fact]
+    public void AdvancedLabel_NonTurn_UnderscoreNamespaced_Description()
+    {
+        var (_, description) = FieldDiscoveryService.GenerateAdvancedLabelAndDescription(
+            "Opinion_OldGuard");
+        Assert.Equal("Variable: Opinion_OldGuard", description);
+    }
+
+    [Fact]
+    public void DiscoverFields_UsesAdvancedLabels()
+    {
+        var doc = CreateDocument(variables: [
+            new LuaVariable("GameCondition.Turn01_A_PoliticalOverview", new LuaValue.Bool(true))
+        ]);
+
+        var discovered = _service.DiscoverFields(doc);
+
+        Assert.Single(discovered);
+        Assert.Equal("Political Overview", discovered[0].Label);
+        Assert.Contains("Turn 01", discovered[0].Description!);
+    }
 }
