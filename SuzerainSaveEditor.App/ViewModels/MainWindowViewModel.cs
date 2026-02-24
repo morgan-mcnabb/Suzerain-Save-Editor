@@ -141,6 +141,10 @@ public partial class MainWindowViewModel : ViewModelBase
             var savedSearch = SearchText;
             var savedCategoryKey = SelectedCategory?.Key;
             await LoadFileAsync(_editSession.FilePath);
+
+            if (!IsFileLoaded)
+                return;
+
             SelectedGroupIndex = savedTab;
             SearchText = savedSearch;
 

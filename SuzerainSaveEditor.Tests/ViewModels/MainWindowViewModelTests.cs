@@ -386,6 +386,21 @@ public sealed class MainWindowViewModelTests
         Assert.Contains("Save failed", vm.StatusMessage);
     }
 
+    [Fact]
+    public async Task SaveCommand_ReloadFailure_DoesNotShowSavedSuccessfully()
+    {
+        var failOnReload = new FailOnReloadSaveFileService(CreateTestDocument());
+        var vm = CreateViewModel(saveFileService: failOnReload);
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.DoesNotContain("Saved successfully", vm.StatusMessage);
+        Assert.Contains("Failed to load", vm.StatusMessage);
+        Assert.False(vm.IsFileLoaded);
+    }
+
     // search
     [Fact]
     public async Task Search_FiltersFieldsByLabel()
@@ -990,6 +1005,26 @@ public sealed class MainWindowViewModelTests
             SaveCalls.Add((filePath, document));
             return Task.CompletedTask;
         }
+    }
+
+    private sealed class FailOnReloadSaveFileService : ISaveFileService
+    {
+        private readonly SaveDocument _document;
+        private int _openCount;
+
+        public FailOnReloadSaveFileService(SaveDocument document) => _document = document;
+
+        public Task<SaveDocument> OpenAsync(string filePath)
+        {
+            _openCount++;
+            // first open succeeds (initial load), second open fails (reload after save)
+            if (_openCount > 1)
+                throw new IOException("Simulated reload failure");
+            return Task.FromResult(_document);
+        }
+
+        public Task SaveAsync(string filePath, SaveDocument document)
+            => Task.CompletedTask;
     }
 
     private sealed class FailingSaveFileService : ISaveFileService
