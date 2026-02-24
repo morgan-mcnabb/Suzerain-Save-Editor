@@ -6,6 +6,7 @@ namespace SuzerainSaveEditor.App.Views;
 public partial class MainWindow : Window
 {
     private bool _forceClose;
+    private bool _isClosing;
 
     public MainWindow()
     {
@@ -22,36 +23,47 @@ public partial class MainWindow : Window
 
         e.Cancel = true;
 
-        var dialog = new UnsavedChangesDialog();
-        await dialog.ShowDialog(this);
+        // prevent a second dialog if the user hits Alt+F4 while the first is open
+        if (_isClosing) return;
+        _isClosing = true;
 
-        switch (dialog.Result)
+        try
         {
-            case UnsavedChangesResult.Save:
-                try
-                {
-                    await vm.SaveCommand.ExecuteAsync(null);
-                }
-                catch
-                {
-                    // save failed — keep window open so user can retry or discard
-                    break;
-                }
+            var dialog = new UnsavedChangesDialog();
+            await dialog.ShowDialog(this);
 
-                if (!vm.IsDirty || vm.SaveCommittedToDisk)
-                {
+            switch (dialog.Result)
+            {
+                case UnsavedChangesResult.Save:
+                    try
+                    {
+                        await vm.SaveCommand.ExecuteAsync(null);
+                    }
+                    catch
+                    {
+                        // save failed — keep window open so user can retry or discard
+                        break;
+                    }
+
+                    if (!vm.IsDirty || vm.SaveCommittedToDisk)
+                    {
+                        _forceClose = true;
+                        Close();
+                    }
+                    break;
+
+                case UnsavedChangesResult.Discard:
                     _forceClose = true;
                     Close();
-                }
-                break;
+                    break;
 
-            case UnsavedChangesResult.Discard:
-                _forceClose = true;
-                Close();
-                break;
-
-            case UnsavedChangesResult.Cancel:
-                break;
+                case UnsavedChangesResult.Cancel:
+                    break;
+            }
+        }
+        finally
+        {
+            _isClosing = false;
         }
     }
 }
