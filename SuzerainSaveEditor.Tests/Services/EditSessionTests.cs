@@ -32,6 +32,23 @@ public sealed class EditSessionTests
         return new EditSession(doc ?? CreateTestDocument(), null, SchemaWithMinMax(), _resolver);
     }
 
+    private EditSession CreateSessionWithDecimalMinMax()
+    {
+        var field = new FieldDefinition
+        {
+            Id = "test.decimal",
+            Path = "variable:BaseGame.GovernmentBudget",
+            Label = "Test Decimal",
+            Group = FieldGroup.General,
+            Type = FieldType.Decimal,
+            Source = FieldSource.Variable,
+            Min = 0,
+            Max = 100
+        };
+        var schema = new MutableSchemaService(field);
+        return new EditSession(CreateTestDocument(), null, schema, _resolver);
+    }
+
     // test helper that replaces a single field by id in the wrapped schema
     private sealed class OverridingSchemaService(ISchemaService inner, FieldDefinition overrideField) : ISchemaService
     {
@@ -373,6 +390,83 @@ public sealed class EditSessionTests
     {
         var session = CreateSessionWithMinMax();
         var result = session.SetValue("sordland.governmentBudget", "10");
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void ValidateField_Decimal_BelowMin_ReturnsError()
+    {
+        var session = CreateSessionWithDecimalMinMax();
+        var result = session.ValidateField("test.decimal", "-1.5");
+
+        Assert.False(result.IsValid);
+        Assert.Contains("below minimum", result.Error);
+    }
+
+    [Fact]
+    public void ValidateField_Decimal_AboveMax_ReturnsError()
+    {
+        var session = CreateSessionWithDecimalMinMax();
+        var result = session.ValidateField("test.decimal", "100.5");
+
+        Assert.False(result.IsValid);
+        Assert.Contains("exceeds maximum", result.Error);
+    }
+
+    [Fact]
+    public void ValidateField_Decimal_AtMin_Succeeds()
+    {
+        var session = CreateSessionWithDecimalMinMax();
+        var result = session.ValidateField("test.decimal", "0");
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void ValidateField_Decimal_AtMax_Succeeds()
+    {
+        var session = CreateSessionWithDecimalMinMax();
+        var result = session.ValidateField("test.decimal", "100");
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void ValidateField_Decimal_WithinRange_Succeeds()
+    {
+        var session = CreateSessionWithDecimalMinMax();
+        var result = session.ValidateField("test.decimal", "50.5");
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void ValidateField_Decimal_InvalidString_ReturnsError()
+    {
+        var session = CreateSessionWithDecimalMinMax();
+        var result = session.ValidateField("test.decimal", "abc");
+
+        Assert.False(result.IsValid);
+        Assert.Contains("not a valid number", result.Error);
+    }
+
+    [Fact]
+    public void ValidateField_Decimal_NoMinMax_AcceptsAnyValidNumber()
+    {
+        var field = new FieldDefinition
+        {
+            Id = "test.unbounded",
+            Path = "variable:BaseGame.GovernmentBudget",
+            Label = "Unbounded Decimal",
+            Group = FieldGroup.General,
+            Type = FieldType.Decimal,
+            Source = FieldSource.Variable
+        };
+        var schema = new MutableSchemaService(field);
+        var session = new EditSession(CreateTestDocument(), null, schema, _resolver);
+
+        var result = session.ValidateField("test.unbounded", "999999.99");
 
         Assert.True(result.IsValid);
     }

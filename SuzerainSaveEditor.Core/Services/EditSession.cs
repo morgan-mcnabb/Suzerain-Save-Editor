@@ -146,7 +146,7 @@ public sealed class EditSession : IEditSession
         {
             FieldType.Bool => ValidateBool(value),
             FieldType.Int => ValidateInt(field, value),
-            FieldType.Decimal => ValidateDecimal(value),
+            FieldType.Decimal => ValidateDecimal(field, value),
             FieldType.String => ValidationResult.Success,
             FieldType.Enum => ValidateEnum(field, value),
             _ => ValidationResult.Success
@@ -174,10 +174,17 @@ public sealed class EditSession : IEditSession
         return ValidationResult.Success;
     }
 
-    private static ValidationResult ValidateDecimal(string value)
+    private static ValidationResult ValidateDecimal(FieldDefinition field, string value)
     {
-        if (!double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out _))
+        if (!double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var doubleValue))
             return ValidationResult.Failure($"'{value}' is not a valid number.");
+
+        if (field.Min.HasValue && doubleValue < field.Min.Value)
+            return ValidationResult.Failure($"Value {doubleValue} is below minimum {field.Min.Value}.");
+
+        if (field.Max.HasValue && doubleValue > field.Max.Value)
+            return ValidationResult.Failure($"Value {doubleValue} exceeds maximum {field.Max.Value}.");
+
         return ValidationResult.Success;
     }
 
