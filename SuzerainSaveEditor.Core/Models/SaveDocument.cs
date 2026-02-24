@@ -26,6 +26,19 @@ public sealed class SaveDocument
         _entityIndex ??= BuildEntityIndex();
 
     
+    internal SaveDocument ReplaceMetadata(SaveMetadata metadata)
+    {
+        return new SaveDocument
+        {
+            Metadata = metadata,
+            WarSaveData = WarSaveData,
+            Variables = Variables,
+            EntityUpdates = EntityUpdates,
+            _variableIndex = _variableIndex,
+            _entityIndex = _entityIndex
+        };
+    }
+
     internal SaveDocument ReplaceVariable(int index, LuaVariable variable)
     {
         var newVariables = new List<LuaVariable>(Variables);

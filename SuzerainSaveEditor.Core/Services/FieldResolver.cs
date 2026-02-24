@@ -134,13 +134,7 @@ public sealed class FieldResolver : IFieldResolver
             _ => throw new ArgumentException($"Unknown metadata property: {property}")
         };
 
-        return new SaveDocument
-        {
-            Metadata = newMeta,
-            WarSaveData = document.WarSaveData,
-            Variables = document.Variables,
-            EntityUpdates = document.EntityUpdates
-        };
+        return document.ReplaceMetadata(newMeta);
     }
 
     private static LuaValue ConvertToLuaValue(FieldType type, string value) => type switch
