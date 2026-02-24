@@ -14,6 +14,15 @@ public sealed class CompositeSchemaService : ISchemaService
 
         _allFields = baseSchema.GetAll().Concat(discoveredFields).ToList();
 
+        var discoveredDuplicates = discoveredFields
+            .GroupBy(f => f.Id)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+        if (discoveredDuplicates.Count > 0)
+            throw new InvalidOperationException(
+                $"Duplicate field IDs within discovered fields: {string.Join(", ", discoveredDuplicates)}");
+
         // detect duplicate field IDs between base schema and discovered fields
         var baseIds = new HashSet<string>(baseSchema.GetAll().Select(f => f.Id));
         var duplicates = discoveredFields.Where(f => baseIds.Contains(f.Id)).Select(f => f.Id).ToList();

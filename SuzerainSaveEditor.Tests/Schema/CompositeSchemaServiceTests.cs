@@ -196,4 +196,31 @@ public sealed class CompositeSchemaServiceTests
 
         Assert.Throws<InvalidOperationException>(() => new CompositeSchemaService(_baseSchema, [duplicate]));
     }
+
+    [Fact]
+    public void Constructor_DuplicateWithinDiscoveredFields_ThrowsInvalidOperationException()
+    {
+        var field1 = new FieldDefinition
+        {
+            Id = "discovered.dup",
+            Path = "variable:Custom.A",
+            Label = "First",
+            Group = FieldGroup.Advanced,
+            Type = FieldType.Bool,
+            Source = FieldSource.Variable
+        };
+        var field2 = new FieldDefinition
+        {
+            Id = "discovered.dup",
+            Path = "variable:Custom.B",
+            Label = "Second",
+            Group = FieldGroup.Advanced,
+            Type = FieldType.Bool,
+            Source = FieldSource.Variable
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => new CompositeSchemaService(_baseSchema, [field1, field2]));
+        Assert.Contains("discovered.dup", ex.Message);
+    }
 }
