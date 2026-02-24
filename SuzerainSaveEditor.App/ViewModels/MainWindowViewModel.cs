@@ -25,6 +25,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly List<FieldViewModel> _allAdvancedFields = [];
     private readonly List<CategoryNodeViewModel> _allCategoryNodes = [];
     private readonly Dictionary<string, FieldViewModel> _fieldLookup = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _validationErrors = new(StringComparer.Ordinal);
 
     // observable collections bound to UI (filtered by search)
     public ObservableCollection<FieldViewModel> GeneralFields { get; } = [];
@@ -173,6 +174,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (_editSession is null) return;
 
         _editSession.RevertAll();
+        _validationErrors.Clear();
 
         foreach (var field in AllFields())
             field.ResetToOriginal();
@@ -269,6 +271,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _allAdvancedFields.Clear();
         _allCategoryNodes.Clear();
         _fieldLookup.Clear();
+        _validationErrors.Clear();
 
         var schema = _activeSchema ?? _schemaService;
 
@@ -451,11 +454,13 @@ public partial class MainWindowViewModel : ViewModelBase
         if (!result.IsValid)
         {
             fieldVm.ValidationError = result.Error;
+            _validationErrors[fieldId] = result.Error ?? "Invalid";
         }
         else
         {
             fieldVm.ValidationError = null;
             fieldVm.IsDirty = _editSession.IsFieldDirty(fieldId);
+            _validationErrors.Remove(fieldId);
         }
 
         UpdateDirtyState();
@@ -482,9 +487,10 @@ public partial class MainWindowViewModel : ViewModelBase
             _ => $"{ChangeCount} unsaved changes"
         };
 
-        var validation = _editSession.ValidateAll();
-        HasValidationErrors = !validation.IsValid;
-        ValidationStatusText = validation.IsValid ? "Valid" : validation.Error ?? "Invalid";
+        HasValidationErrors = _validationErrors.Count > 0;
+        ValidationStatusText = HasValidationErrors
+            ? _validationErrors.Values.First()
+            : "Valid";
     }
 
     private void ApplyFilter()
