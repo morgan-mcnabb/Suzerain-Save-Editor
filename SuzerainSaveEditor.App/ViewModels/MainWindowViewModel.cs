@@ -90,6 +90,9 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _showCategoryFields;
 
+    [ObservableProperty]
+    private bool _saveCommittedToDisk;
+
     public string WindowTitle => IsFileLoaded
         ? $"Suzerain Save Editor \u2014 {Path.GetFileName(FilePath)}{(IsDirty ? " *" : "")}"
         : "Suzerain Save Editor";
@@ -138,6 +141,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
             StatusMessage = "Saving...";
             await _saveFileService.SaveAsync(_editSession.FilePath, _editSession.CurrentDocument);
+            SaveCommittedToDisk = true;
 
             // preserve tab selection and search, reload to reset dirty state
             var savedTab = SelectedGroupIndex;
@@ -247,6 +251,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
             FilePath = path;
             IsFileLoaded = true;
+            SaveCommittedToDisk = false;
 
             PopulateFields();
             UpdateDirtyState();
@@ -457,6 +462,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (_editSession is null) return;
 
+        SaveCommittedToDisk = false;
         var result = _editSession.SetValue(fieldId, value);
 
         var fieldVm = FindFieldViewModel(fieldId);

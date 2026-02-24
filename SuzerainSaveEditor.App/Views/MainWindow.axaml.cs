@@ -17,7 +17,8 @@ public partial class MainWindow : Window
     {
         if (_forceClose) return;
 
-        if (DataContext is not MainWindowViewModel { IsDirty: true } vm) return;
+        if (DataContext is not MainWindowViewModel vm) return;
+        if (!vm.IsDirty || vm.SaveCommittedToDisk) return;
 
         e.Cancel = true;
 
@@ -37,7 +38,7 @@ public partial class MainWindow : Window
                     break;
                 }
 
-                if (!vm.IsDirty)
+                if (!vm.IsDirty || vm.SaveCommittedToDisk)
                 {
                     _forceClose = true;
                     Close();

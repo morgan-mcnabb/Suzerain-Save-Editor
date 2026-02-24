@@ -1017,6 +1017,76 @@ public sealed class MainWindowViewModelTests
         Assert.Null(vm.SelectedCategory);
     }
 
+    // save committed to disk flag
+    [Fact]
+    public async Task SaveCommittedToDisk_FalseInitially()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        Assert.False(vm.SaveCommittedToDisk);
+    }
+
+    [Fact]
+    public async Task SaveCommittedToDisk_FalseAfterSuccessfulSave()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        // successful save + successful reload clears the flag
+        Assert.False(vm.SaveCommittedToDisk);
+        Assert.False(vm.IsDirty);
+    }
+
+    [Fact]
+    public async Task SaveCommittedToDisk_TrueWhenReloadFails()
+    {
+        var failOnReload = new FailOnReloadSaveFileService(CreateTestDocument());
+        var vm = CreateViewModel(saveFileService: failOnReload);
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        // save succeeded but reload failed — flag should be true
+        Assert.True(vm.SaveCommittedToDisk);
+        Assert.True(vm.IsDirty);
+        Assert.False(vm.IsFileLoaded);
+    }
+
+    [Fact]
+    public async Task SaveCommittedToDisk_FalseAfterFailedSave()
+    {
+        var failingSave = new FailingSaveFileService(CreateTestDocument());
+        var vm = CreateViewModel(saveFileService: failingSave);
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        // save itself failed — flag should remain false
+        Assert.False(vm.SaveCommittedToDisk);
+    }
+
+    [Fact]
+    public async Task SaveCommittedToDisk_ResetOnNewEdit()
+    {
+        var failOnReload = new FailOnReloadSaveFileService(CreateTestDocument());
+        var vm = CreateViewModel(saveFileService: failOnReload);
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.True(vm.SaveCommittedToDisk);
+
+        // making a new edit should reset the flag
+        vm.GeneralFields.First(f => f.FieldId == "meta.notes").Value = "new notes";
+        Assert.False(vm.SaveCommittedToDisk);
+    }
+
     // test doubles
     private sealed class FakeSaveFileService : ISaveFileService
     {
