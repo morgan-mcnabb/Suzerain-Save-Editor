@@ -9,103 +9,103 @@
     </Application.DataTemplates>
 
     <Application.Resources>
-        <!-- surface colors -->
-        <SolidColorBrush x:Key="BgBase" Color="#1A1B1E" />
-        <SolidColorBrush x:Key="BgSurface" Color="#222327" />
-        <SolidColorBrush x:Key="BgElevated" Color="#2A2B30" />
-        <SolidColorBrush x:Key="BgHover" Color="#32333A" />
-        <SolidColorBrush x:Key="BgActive" Color="#3A3B42" />
+        <!-- surface colors (warm-tinted neutrals) -->
+        <SolidColorBrush x:Key="BgBase" Color="#1A1917" />
+        <SolidColorBrush x:Key="BgSurface" Color="#22211E" />
+        <SolidColorBrush x:Key="BgElevated" Color="#2B2A26" />
+        <SolidColorBrush x:Key="BgHover" Color="#33322D" />
+        <SolidColorBrush x:Key="BgActive" Color="#3B3A35" />
 
-        <!-- accent colors -->
-        <SolidColorBrush x:Key="AccentPrimary" Color="#D4A54A" />
-        <SolidColorBrush x:Key="AccentPrimaryDim" Color="#B8912F" />
-        <SolidColorBrush x:Key="AccentPrimaryBg" Color="#2E2818" />
+        <!-- accent colors (antique gold) -->
+        <SolidColorBrush x:Key="AccentPrimary" Color="#C9952C" />
+        <SolidColorBrush x:Key="AccentPrimaryDim" Color="#A67B1E" />
+        <SolidColorBrush x:Key="AccentPrimaryBg" Color="#2A2210" />
         <SolidColorBrush x:Key="AccentSecondary" Color="#5B8DEF" />
 
         <!-- semantic colors -->
         <SolidColorBrush x:Key="StatusDirty" Color="#E8A838" />
-        <SolidColorBrush x:Key="StatusDirtyBg" Color="#2E2818" />
+        <SolidColorBrush x:Key="StatusDirtyBg" Color="#2A2210" />
         <SolidColorBrush x:Key="StatusValid" Color="#4ADE80" />
         <SolidColorBrush x:Key="StatusError" Color="#EF4444" />
-        <SolidColorBrush x:Key="StatusErrorBg" Color="#2E1B1B" />
+        <SolidColorBrush x:Key="StatusErrorBg" Color="#2D1C1A" />
 
         <!-- text colors -->
-        <SolidColorBrush x:Key="TextPrimary" Color="#EAEAEC" />
-        <SolidColorBrush x:Key="TextSecondary" Color="#A0A1A8" />
-        <SolidColorBrush x:Key="TextTertiary" Color="#6B6C73" />
-        <SolidColorBrush x:Key="TextOnAccent" Color="#1A1B1E" />
+        <SolidColorBrush x:Key="TextPrimary" Color="#EAEAE8" />
+        <SolidColorBrush x:Key="TextSecondary" Color="#A09F9A" />
+        <SolidColorBrush x:Key="TextTertiary" Color="#6B6A65" />
+        <SolidColorBrush x:Key="TextOnAccent" Color="#1A1917" />
 
-        <!-- border colors -->
-        <SolidColorBrush x:Key="BorderSubtle" Color="#2F3037" />
-        <SolidColorBrush x:Key="BorderDefault" Color="#3A3B42" />
-        <SolidColorBrush x:Key="BorderStrong" Color="#4A4B52" />
-        <SolidColorBrush x:Key="BorderAccent" Color="#D4A54A" />
+        <!-- border colors (warm-tinted) -->
+        <SolidColorBrush x:Key="BorderSubtle" Color="#302F2A" />
+        <SolidColorBrush x:Key="BorderDefault" Color="#3B3A35" />
+        <SolidColorBrush x:Key="BorderStrong" Color="#4B4A44" />
+        <SolidColorBrush x:Key="BorderAccent" Color="#C9952C" />
 
         <!-- loading overlay -->
-        <SolidColorBrush x:Key="OverlayBackground" Color="#D91A1B1E" />
+        <SolidColorBrush x:Key="OverlayBackground" Color="#D91A1917" />
 
         <!-- textbox theme overrides -->
-        <SolidColorBrush x:Key="TextControlBackground" Color="#222327" />
-        <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#2A2B30" />
-        <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#222327" />
-        <SolidColorBrush x:Key="TextControlBorderBrush" Color="#3A3B42" />
-        <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#4A4B52" />
+        <SolidColorBrush x:Key="TextControlBackground" Color="#22211E" />
+        <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#2B2A26" />
+        <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#22211E" />
+        <SolidColorBrush x:Key="TextControlBorderBrush" Color="#3B3A35" />
+        <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#4B4A44" />
         <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#5B8DEF" />
-        <SolidColorBrush x:Key="TextControlForeground" Color="#EAEAEC" />
-        <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="#EAEAEC" />
-        <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#EAEAEC" />
-        <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#6B6C73" />
-        <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#6B6C73" />
-        <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#6B6C73" />
+        <SolidColorBrush x:Key="TextControlForeground" Color="#EAEAE8" />
+        <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="#EAEAE8" />
+        <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#EAEAE8" />
+        <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#6B6A65" />
+        <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#6B6A65" />
+        <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#6B6A65" />
 
         <!-- combobox theme overrides -->
-        <SolidColorBrush x:Key="ComboBoxBackground" Color="#222327" />
-        <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="#2A2B30" />
-        <SolidColorBrush x:Key="ComboBoxBackgroundPressed" Color="#222327" />
-        <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#3A3B42" />
-        <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="#4A4B52" />
-        <SolidColorBrush x:Key="ComboBoxBorderBrushPressed" Color="#3A3B42" />
-        <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#2A2B30" />
-        <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#3A3B42" />
+        <SolidColorBrush x:Key="ComboBoxBackground" Color="#22211E" />
+        <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="#2B2A26" />
+        <SolidColorBrush x:Key="ComboBoxBackgroundPressed" Color="#22211E" />
+        <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#3B3A35" />
+        <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="#4B4A44" />
+        <SolidColorBrush x:Key="ComboBoxBorderBrushPressed" Color="#3B3A35" />
+        <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#2B2A26" />
+        <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#3B3A35" />
 
         <!-- toggle switch theme overrides -->
-        <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#D4A54A" />
-        <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="#B8912F" />
-        <SolidColorBrush x:Key="ToggleSwitchFillOnPressed" Color="#A07D28" />
-        <SolidColorBrush x:Key="ToggleSwitchStrokeOn" Color="#D4A54A" />
-        <SolidColorBrush x:Key="ToggleSwitchStrokeOnPointerOver" Color="#B8912F" />
-        <SolidColorBrush x:Key="ToggleSwitchStrokeOnPressed" Color="#A07D28" />
-        <SolidColorBrush x:Key="ToggleSwitchKnobFillOn" Color="#1A1B1E" />
-        <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPointerOver" Color="#1A1B1E" />
-        <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPressed" Color="#1A1B1E" />
+        <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#C9952C" />
+        <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="#A67B1E" />
+        <SolidColorBrush x:Key="ToggleSwitchFillOnPressed" Color="#8D6819" />
+        <SolidColorBrush x:Key="ToggleSwitchStrokeOn" Color="#C9952C" />
+        <SolidColorBrush x:Key="ToggleSwitchStrokeOnPointerOver" Color="#A67B1E" />
+        <SolidColorBrush x:Key="ToggleSwitchStrokeOnPressed" Color="#8D6819" />
+        <SolidColorBrush x:Key="ToggleSwitchKnobFillOn" Color="#1A1917" />
+        <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPointerOver" Color="#1A1917" />
+        <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPressed" Color="#1A1917" />
 
-        <!-- accent button theme overrides (gold) -->
-        <SolidColorBrush x:Key="AccentButtonBackground" Color="#D4A54A" />
-        <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#B8912F" />
-        <SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#A07D28" />
-        <SolidColorBrush x:Key="AccentButtonBackgroundDisabled" Color="#3A3B42" />
-        <SolidColorBrush x:Key="AccentButtonBorderBrush" Color="#D4A54A" />
-        <SolidColorBrush x:Key="AccentButtonBorderBrushPointerOver" Color="#B8912F" />
-        <SolidColorBrush x:Key="AccentButtonBorderBrushPressed" Color="#A07D28" />
-        <SolidColorBrush x:Key="AccentButtonBorderBrushDisabled" Color="#3A3B42" />
-        <SolidColorBrush x:Key="AccentButtonForeground" Color="#1A1B1E" />
-        <SolidColorBrush x:Key="AccentButtonForegroundPointerOver" Color="#1A1B1E" />
-        <SolidColorBrush x:Key="AccentButtonForegroundPressed" Color="#1A1B1E" />
-        <SolidColorBrush x:Key="AccentButtonForegroundDisabled" Color="#6B6C73" />
+        <!-- accent button theme overrides (antique gold) -->
+        <SolidColorBrush x:Key="AccentButtonBackground" Color="#C9952C" />
+        <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#A67B1E" />
+        <SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#8D6819" />
+        <SolidColorBrush x:Key="AccentButtonBackgroundDisabled" Color="#3B3A35" />
+        <SolidColorBrush x:Key="AccentButtonBorderBrush" Color="#C9952C" />
+        <SolidColorBrush x:Key="AccentButtonBorderBrushPointerOver" Color="#A67B1E" />
+        <SolidColorBrush x:Key="AccentButtonBorderBrushPressed" Color="#8D6819" />
+        <SolidColorBrush x:Key="AccentButtonBorderBrushDisabled" Color="#3B3A35" />
+        <SolidColorBrush x:Key="AccentButtonForeground" Color="#1A1917" />
+        <SolidColorBrush x:Key="AccentButtonForegroundPointerOver" Color="#1A1917" />
+        <SolidColorBrush x:Key="AccentButtonForegroundPressed" Color="#1A1917" />
+        <SolidColorBrush x:Key="AccentButtonForegroundDisabled" Color="#6B6A65" />
 
         <!-- regular button theme overrides (ghost style) -->
         <SolidColorBrush x:Key="ButtonBackground" Color="Transparent" />
-        <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#32333A" />
-        <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#3A3B42" />
+        <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#33322D" />
+        <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#3B3A35" />
         <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="Transparent" />
-        <SolidColorBrush x:Key="ButtonBorderBrush" Color="#3A3B42" />
-        <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="#4A4B52" />
-        <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="#4A4B52" />
-        <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="#2F3037" />
-        <SolidColorBrush x:Key="ButtonForeground" Color="#EAEAEC" />
-        <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="#EAEAEC" />
-        <SolidColorBrush x:Key="ButtonForegroundPressed" Color="#A0A1A8" />
-        <SolidColorBrush x:Key="ButtonForegroundDisabled" Color="#6B6C73" />
+        <SolidColorBrush x:Key="ButtonBorderBrush" Color="#3B3A35" />
+        <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="#4B4A44" />
+        <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="#4B4A44" />
+        <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="#302F2A" />
+        <SolidColorBrush x:Key="ButtonForeground" Color="#EAEAE8" />
+        <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="#EAEAE8" />
+        <SolidColorBrush x:Key="ButtonForegroundPressed" Color="#A09F9A" />
+        <SolidColorBrush x:Key="ButtonForegroundDisabled" Color="#6B6A65" />
 
         <!-- tab item theme overrides (underline style) -->
         <SolidColorBrush x:Key="TabItemHeaderBackgroundUnselected" Color="Transparent" />
@@ -114,17 +114,17 @@
         <SolidColorBrush x:Key="TabItemHeaderBackgroundSelectedPointerOver" Color="Transparent" />
         <SolidColorBrush x:Key="TabItemHeaderBackgroundUnselectedPressed" Color="Transparent" />
         <SolidColorBrush x:Key="TabItemHeaderBackgroundSelectedPressed" Color="Transparent" />
-        <SolidColorBrush x:Key="TabItemHeaderForegroundUnselected" Color="#A0A1A8" />
-        <SolidColorBrush x:Key="TabItemHeaderForegroundSelected" Color="#EAEAEC" />
-        <SolidColorBrush x:Key="TabItemHeaderForegroundUnselectedPointerOver" Color="#EAEAEC" />
-        <SolidColorBrush x:Key="TabItemHeaderForegroundSelectedPointerOver" Color="#EAEAEC" />
-        <SolidColorBrush x:Key="TabItemHeaderForegroundUnselectedPressed" Color="#A0A1A8" />
-        <SolidColorBrush x:Key="TabItemHeaderForegroundSelectedPressed" Color="#EAEAEC" />
-        <SolidColorBrush x:Key="TabItemHeaderSelectedPipeFill" Color="#D4A54A" />
+        <SolidColorBrush x:Key="TabItemHeaderForegroundUnselected" Color="#A09F9A" />
+        <SolidColorBrush x:Key="TabItemHeaderForegroundSelected" Color="#EAEAE8" />
+        <SolidColorBrush x:Key="TabItemHeaderForegroundUnselectedPointerOver" Color="#EAEAE8" />
+        <SolidColorBrush x:Key="TabItemHeaderForegroundSelectedPointerOver" Color="#EAEAE8" />
+        <SolidColorBrush x:Key="TabItemHeaderForegroundUnselectedPressed" Color="#A09F9A" />
+        <SolidColorBrush x:Key="TabItemHeaderForegroundSelectedPressed" Color="#EAEAE8" />
+        <SolidColorBrush x:Key="TabItemHeaderSelectedPipeFill" Color="#C9952C" />
 
         <!-- progress bar theme overrides -->
-        <SolidColorBrush x:Key="ProgressBarForeground" Color="#D4A54A" />
-        <SolidColorBrush x:Key="ProgressBarBackground" Color="#2F3037" />
+        <SolidColorBrush x:Key="ProgressBarForeground" Color="#C9952C" />
+        <SolidColorBrush x:Key="ProgressBarBackground" Color="#302F2A" />
 
         <!-- toolbar icon geometries -->
         <StreamGeometry x:Key="IconFolderOpen">M19,20H4C2.89,20 2,19.1 2,18V6C2,4.89 2.89,4 4,4H10L12,6H19A2,2 0 0,1 21,8H21L4,8V18L6.14,10H23.21L20.93,18.5C20.7,19.37 19.92,20 19,20Z</StreamGeometry>
@@ -174,10 +174,10 @@
             <Setter Property="MinHeight" Value="52" />
             <Setter Property="BorderThickness" Value="0,0,0,1" />
             <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}" />
-            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Background" Value="{DynamicResource BgBase}" />
             <Setter Property="Transitions">
                 <Transitions>
-                    <BrushTransition Property="Background" Duration="0:0:0.15" />
+                    <BrushTransition Property="Background" Duration="0:0:0.25" />
                 </Transitions>
             </Setter>
         </Style>

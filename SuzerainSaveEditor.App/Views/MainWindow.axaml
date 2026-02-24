@@ -409,14 +409,15 @@
                                             <Border Classes="tree-node"
                                                     Padding="8,6"
                                                     CornerRadius="4"
-                                                    Background="Transparent"
+                                                    Background="{DynamicResource BgBase}"
                                                     BorderThickness="3,0,0,0"
-                                                    BorderBrush="Transparent"
+                                                    BorderBrush="{DynamicResource BgBase}"
                                                     Classes.tree-node-selected="{Binding IsSelected}"
                                                     Classes.tree-node-parent="{Binding IsParent}">
                                                 <Border.Transitions>
                                                     <Transitions>
-                                                        <BrushTransition Property="Background" Duration="0:0:0.15" />
+                                                        <BrushTransition Property="Background" Duration="0:0:0.25" />
+                                                        <BrushTransition Property="BorderBrush" Duration="0:0:0.25" />
                                                     </Transitions>
                                                 </Border.Transitions>
                                                 <TextBlock Text="{Binding HeaderText}"
@@ -528,8 +529,8 @@
                                                                 BorderThickness="1">
                                                             <Border.Transitions>
                                                                 <Transitions>
-                                                                    <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
-                                                                    <BrushTransition Property="Background" Duration="0:0:0.15" />
+                                                                    <BrushTransition Property="BorderBrush" Duration="0:0:0.25" />
+                                                                    <BrushTransition Property="Background" Duration="0:0:0.25" />
                                                                 </Transitions>
                                                             </Border.Transitions>
                                                             <StackPanel Spacing="8">
