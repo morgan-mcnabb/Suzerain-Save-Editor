@@ -118,12 +118,16 @@ public partial class CategoryNodeViewModel : ViewModelBase
         if (string.IsNullOrEmpty(query))
         {
             // no filter — restore all children and full count
-            Children.Clear();
-            foreach (var child in _allChildren)
+            // skip collection rebuild if already showing all children to avoid unnecessary UI re-layout
+            if (Children.Count != _allChildren.Count)
             {
-                child.ApplyFilter(query);
-                Children.Add(child);
+                Children.Clear();
+                foreach (var child in _allChildren)
+                    Children.Add(child);
             }
+
+            foreach (var child in _allChildren)
+                child.ApplyFilter(query);
 
             FilteredCount = TotalCount;
             IsVisible = true;
