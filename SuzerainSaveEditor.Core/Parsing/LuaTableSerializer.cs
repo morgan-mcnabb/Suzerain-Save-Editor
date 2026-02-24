@@ -3,9 +3,6 @@ using SuzerainSaveEditor.Core.Models;
 
 namespace SuzerainSaveEditor.Core.Parsing;
 
-/// <summary>
-/// serializes a list of lua variables back to the Variable={...}; format
-/// </summary>
 public static class LuaTableSerializer
 {
     private const string Prefix = "Variable={";

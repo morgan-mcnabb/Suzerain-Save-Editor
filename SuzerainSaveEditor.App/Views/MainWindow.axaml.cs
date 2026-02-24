@@ -27,7 +27,16 @@ public partial class MainWindow : Window
         switch (dialog.Result)
         {
             case UnsavedChangesResult.Save:
-                await vm.SaveCommand.ExecuteAsync(null);
+                try
+                {
+                    await vm.SaveCommand.ExecuteAsync(null);
+                }
+                catch
+                {
+                    // save failed — keep window open so user can retry or discard
+                    break;
+                }
+
                 if (!vm.IsDirty)
                 {
                     _forceClose = true;
