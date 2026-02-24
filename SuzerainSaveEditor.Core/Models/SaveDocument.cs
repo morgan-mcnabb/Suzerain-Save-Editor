@@ -25,6 +25,39 @@ public sealed class SaveDocument
     internal Dictionary<(string NameInDatabase, string FieldName), int> EntityIndex =>
         _entityIndex ??= BuildEntityIndex();
 
+    
+    internal SaveDocument ReplaceVariable(int index, LuaVariable variable)
+    {
+        var newVariables = new List<LuaVariable>(Variables);
+        newVariables[index] = variable;
+
+        return new SaveDocument
+        {
+            Metadata = Metadata,
+            WarSaveData = WarSaveData,
+            Variables = newVariables,
+            EntityUpdates = EntityUpdates,
+            _variableIndex = _variableIndex,
+            _entityIndex = _entityIndex
+        };
+    }
+
+    internal SaveDocument ReplaceEntityUpdate(int index, EntityUpdate entityUpdate)
+    {
+        var newUpdates = new List<EntityUpdate>(EntityUpdates);
+        newUpdates[index] = entityUpdate;
+
+        return new SaveDocument
+        {
+            Metadata = Metadata,
+            WarSaveData = WarSaveData,
+            Variables = Variables,
+            EntityUpdates = newUpdates,
+            _variableIndex = _variableIndex,
+            _entityIndex = _entityIndex
+        };
+    }
+
     private Dictionary<string, int> BuildVariableIndex()
     {
         var index = new Dictionary<string, int>(Variables.Count);

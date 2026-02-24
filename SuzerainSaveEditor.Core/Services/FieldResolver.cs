@@ -72,16 +72,7 @@ public sealed class FieldResolver : IFieldResolver
         if (!document.VariableIndex.TryGetValue(key, out var idx))
             throw new KeyNotFoundException($"Variable '{key}' not found in save document.");
 
-        var newVariables = new List<LuaVariable>(document.Variables);
-        newVariables[idx] = new LuaVariable(key, luaValue);
-
-        return new SaveDocument
-        {
-            Metadata = document.Metadata,
-            WarSaveData = document.WarSaveData,
-            Variables = newVariables,
-            EntityUpdates = document.EntityUpdates
-        };
+        return document.ReplaceVariable(idx, new LuaVariable(key, luaValue));
     }
 
     private static string? ReadEntityUpdate(SaveDocument document, string path)
@@ -99,16 +90,7 @@ public sealed class FieldResolver : IFieldResolver
         if (!document.EntityIndex.TryGetValue((nameInDatabase, fieldName), out var idx))
             throw new KeyNotFoundException($"Entity update '{nameInDatabase}.{fieldName}' not found in save document.");
 
-        var newUpdates = new List<EntityUpdate>(document.EntityUpdates);
-        newUpdates[idx] = new EntityUpdate(nameInDatabase, fieldName, value);
-
-        return new SaveDocument
-        {
-            Metadata = document.Metadata,
-            WarSaveData = document.WarSaveData,
-            Variables = document.Variables,
-            EntityUpdates = newUpdates
-        };
+        return document.ReplaceEntityUpdate(idx, new EntityUpdate(nameInDatabase, fieldName, value));
     }
 
     private static string? ReadMetadata(SaveDocument document, string path)
