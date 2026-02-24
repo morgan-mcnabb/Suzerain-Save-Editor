@@ -12,7 +12,7 @@ public partial class CategoryNodeViewModel : ViewModelBase
     public string Key { get; }
     public string Label { get; }
     public int SortOrder { get; }
-    public CategoryNodeViewModel? Parent { get; }
+    public CategoryNodeViewModel? Parent { get; internal set; }
 
     // children visible in the tree (filtered)
     public ObservableCollection<CategoryNodeViewModel> Children { get; } = [];

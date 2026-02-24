@@ -79,6 +79,14 @@
         <Style Selector="Border.tree-node-parent > TextBlock">
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
+
+        <!-- breadcrumb: ancestor segments highlight on hover -->
+        <Style Selector="Button.breadcrumb-link:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.breadcrumb-link:pointerover TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource AccentPrimary}" />
+        </Style>
     </Window.Styles>
 
     <Design.DataContext>
@@ -428,14 +436,50 @@
                             <DockPanel Grid.Column="2">
                                 <!-- breadcrumb header -->
                                 <Border DockPanel.Dock="Top"
-                                        Padding="16,12"
+                                        Padding="16,10"
                                         BorderThickness="0,0,0,1"
                                         BorderBrush="{DynamicResource BorderSubtle}"
                                         IsVisible="{Binding HasCategorySelected}">
-                                    <TextBlock Text="{Binding SelectedCategoryPath}"
-                                               FontSize="18"
-                                               FontWeight="SemiBold"
-                                               Foreground="{DynamicResource TextPrimary}" />
+                                    <ItemsControl ItemsSource="{Binding BreadcrumbItems}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:BreadcrumbItem">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <!-- clickable segment (not last) -->
+                                                    <Button Classes="breadcrumb-link"
+                                                            Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).NavigateToBreadcrumbCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            IsVisible="{Binding !IsLast}"
+                                                            Padding="4,4"
+                                                            Background="Transparent"
+                                                            BorderThickness="0"
+                                                            Cursor="Hand">
+                                                        <TextBlock Text="{Binding Label}"
+                                                                   FontSize="16"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource TextSecondary}" />
+                                                    </Button>
+                                                    <!-- separator (not last) -->
+                                                    <TextBlock Text="&#xA0;&gt;&#xA0;"
+                                                               FontSize="16"
+                                                               Foreground="{DynamicResource TextTertiary}"
+                                                               VerticalAlignment="Center"
+                                                               IsVisible="{Binding !IsLast}" />
+                                                    <!-- current segment (last) -->
+                                                    <TextBlock Text="{Binding Label}"
+                                                               FontSize="16"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource TextPrimary}"
+                                                               VerticalAlignment="Center"
+                                                               IsVisible="{Binding IsLast}" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
                                 </Border>
 
                                 <!-- content: three mutually exclusive views overlaid -->

@@ -34,6 +34,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public ObservableCollection<CategoryNodeViewModel> CategoryNodes { get; } = [];
     public ObservableCollection<FieldViewModel> SelectedCategoryFields { get; } = [];
     public ObservableCollection<SubCategorySummaryViewModel> SubCategorySummaries { get; } = [];
+    public ObservableCollection<BreadcrumbItem> BreadcrumbItems { get; } = [];
 
     [ObservableProperty]
     private bool _isFileLoaded;
@@ -218,6 +219,12 @@ public partial class MainWindowViewModel : ViewModelBase
         SelectCategory(card.TargetNode);
     }
 
+    [RelayCommand]
+    private void NavigateToBreadcrumb(BreadcrumbItem item)
+    {
+        SelectCategory(item.Node);
+    }
+
     private async Task LoadFileAsync(string path)
     {
         try
@@ -340,33 +347,26 @@ public partial class MainWindowViewModel : ViewModelBase
                 fieldVms.Add(vm);
         }
 
-        // recursively build children (pass null parent initially, then set after construction)
+        // build children first with null parent (fixed up below)
         var childNodes = new List<CategoryNodeViewModel>();
+        foreach (var childCategory in category.Children)
+        {
+            var childNode = BuildCategoryNode(childCategory, vmLookup, parent: null);
+            childNodes.Add(childNode);
+        }
+
+        // create node with actual children
         var node = new CategoryNodeViewModel(
             category.Key,
             category.Label,
             category.SortOrder,
             fieldVms,
-            [], // will populate children after
+            childNodes,
             parent);
 
-        foreach (var childCategory in category.Children)
-        {
-            var childNode = BuildCategoryNode(childCategory, vmLookup, parent: node);
-            childNodes.Add(childNode);
-        }
-
-        // rebuild with actual children
-        if (childNodes.Count > 0)
-        {
-            node = new CategoryNodeViewModel(
-                category.Key,
-                category.Label,
-                category.SortOrder,
-                fieldVms,
-                childNodes,
-                parent);
-        }
+        // fix up children's parent references to point to this node
+        foreach (var child in childNodes)
+            child.Parent = node;
 
         return node;
     }
@@ -375,6 +375,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         SelectedCategoryFields.Clear();
         SubCategorySummaries.Clear();
+        BreadcrumbItems.Clear();
 
         if (SelectedCategory is null)
         {
@@ -387,6 +388,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         HasCategorySelected = true;
         SelectedCategoryPath = SelectedCategory.BreadcrumbPath;
+        BuildBreadcrumbItems(SelectedCategory);
 
         var query = SearchText?.Trim() ?? "";
 
@@ -410,6 +412,23 @@ public partial class MainWindowViewModel : ViewModelBase
             foreach (var field in fields)
                 SelectedCategoryFields.Add(field);
         }
+    }
+
+    private void BuildBreadcrumbItems(CategoryNodeViewModel node)
+    {
+        // walk up to root, collect ancestors
+        var segments = new List<CategoryNodeViewModel>();
+        var current = node;
+        while (current is not null)
+        {
+            segments.Add(current);
+            current = current.Parent;
+        }
+
+        segments.Reverse();
+
+        for (var i = 0; i < segments.Count; i++)
+            BreadcrumbItems.Add(new BreadcrumbItem(segments[i].Label, segments[i], i == segments.Count - 1));
     }
 
     private void OnFieldValueChanged(string fieldId, string value)
