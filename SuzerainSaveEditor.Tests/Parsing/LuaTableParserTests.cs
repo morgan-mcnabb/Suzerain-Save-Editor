@@ -294,6 +294,50 @@ public sealed class LuaTableParserTests
     }
 
     [Fact]
+    public void Parse_StringWithEscapedCarriageReturn_ParsesCorrectly()
+    {
+        var input = "Variable={[\"msg\"]=\"line1\\rline2\"}; ";
+        var result = LuaTableParser.Parse(input);
+
+        Assert.Single(result);
+        Assert.Equal(new LuaValue.Str("line1\rline2"), result[0].Value);
+    }
+
+    [Fact]
+    public void Parse_StringWithEscapedTab_ParsesCorrectly()
+    {
+        var input = "Variable={[\"msg\"]=\"col1\\tcol2\"}; ";
+        var result = LuaTableParser.Parse(input);
+
+        Assert.Single(result);
+        Assert.Equal(new LuaValue.Str("col1\tcol2"), result[0].Value);
+    }
+
+    [Fact]
+    public void Parse_StringWithEscapedNull_ParsesCorrectly()
+    {
+        var input = "Variable={[\"msg\"]=\"before\\0after\"}; ";
+        var result = LuaTableParser.Parse(input);
+
+        Assert.Single(result);
+        Assert.Equal(new LuaValue.Str("before\0after"), result[0].Value);
+    }
+
+    [Fact]
+    public void RoundTrip_StringWithCarriageReturn_PreservesValue()
+    {
+        var original = new List<LuaVariable>
+        {
+            new("msg", new LuaValue.Str("line1\rline2"))
+        };
+        var serialized = LuaTableSerializer.Serialize(original);
+        var parsed = LuaTableParser.Parse(serialized);
+
+        Assert.Single(parsed);
+        Assert.Equal("line1\rline2", ((LuaValue.Str)parsed[0].Value).Value);
+    }
+
+    [Fact]
     public void RoundTrip_StringWithQuotes_PreservesValue()
     {
         var original = new List<LuaVariable>

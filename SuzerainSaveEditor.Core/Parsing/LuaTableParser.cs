@@ -107,7 +107,9 @@ public static class LuaTableParser
                         '"' => '"',
                         '\\' => '\\',
                         'n' => '\n',
+                        'r' => '\r',
                         't' => '\t',
+                        '0' => '\0',
                         _ => escaped
                     });
                     pos += 2;
