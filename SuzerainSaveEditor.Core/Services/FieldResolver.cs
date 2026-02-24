@@ -1,3 +1,4 @@
+using System.Globalization;
 using SuzerainSaveEditor.Core.Models;
 using SuzerainSaveEditor.Core.Schema;
 
@@ -139,12 +140,12 @@ public sealed class FieldResolver : IFieldResolver
 
         var newMeta = property switch
         {
-            "saveFileType" => meta with { SaveFileType = int.Parse(value) },
+            "saveFileType" => meta with { SaveFileType = int.Parse(value, CultureInfo.InvariantCulture) },
             "campaignName" => meta with { CampaignName = value },
             "currentStoryPack" => meta with { CurrentStoryPack = value },
-            "turnNo" => meta with { TurnNo = int.Parse(value) },
+            "turnNo" => meta with { TurnNo = int.Parse(value, CultureInfo.InvariantCulture) },
             "saveFileName" => meta with { SaveFileName = value },
-            "sceneBuildIndex" => meta with { SceneBuildIndex = int.Parse(value) },
+            "sceneBuildIndex" => meta with { SceneBuildIndex = int.Parse(value, CultureInfo.InvariantCulture) },
             "lastModified" => meta with { LastModified = value },
             "version" => meta with { Version = value },
             "isVersionMismatched" => meta with { IsVersionMismatched = bool.Parse(value) },
@@ -165,7 +166,7 @@ public sealed class FieldResolver : IFieldResolver
     private static LuaValue ConvertToLuaValue(FieldType type, string value) => type switch
     {
         FieldType.Bool => new LuaValue.Bool(bool.Parse(value)),
-        FieldType.Int => new LuaValue.Int(int.Parse(value)),
+        FieldType.Int => new LuaValue.Int(int.Parse(value, CultureInfo.InvariantCulture)),
         FieldType.Decimal => new LuaValue.Num(value),
         FieldType.String or FieldType.Enum => new LuaValue.Str(value),
         _ => throw new ArgumentOutOfRangeException(nameof(type), $"Unknown field type: {type}")
