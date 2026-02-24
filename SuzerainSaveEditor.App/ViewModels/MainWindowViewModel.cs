@@ -538,7 +538,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private void SelectCategoryByKey(string key)
     {
         var node = FindNodeByKey(_allCategoryNodes, key);
-        if (node is not null)
+        if (node is not null && node.IsVisible)
             SelectCategory(node);
     }
 

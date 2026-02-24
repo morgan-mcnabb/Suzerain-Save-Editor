@@ -990,6 +990,33 @@ public sealed class MainWindowViewModelTests
         Assert.Empty(vm.SubCategorySummaries);
     }
 
+    [Fact]
+    public async Task Save_WithFilteredOutCategory_DoesNotSelectInvisibleNode()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        // select a category that will be filtered out
+        var customNode = vm.CategoryNodes.SelectMany(n => n.Children.Prepend(n))
+            .FirstOrDefault(n => n.Key == "Custom");
+        Assert.NotNull(customNode);
+        vm.SelectCategory(customNode);
+        Assert.Same(customNode, vm.SelectedCategory);
+
+        // make an edit so save will proceed (before filtering hides the field)
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+
+        // filter to something that hides "Custom"
+        vm.SearchText = "Diplomacy";
+        Assert.DoesNotContain(vm.CategoryNodes.SelectMany(n => n.Children.Prepend(n)),
+            n => n.Key == "Custom");
+
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        // the previously selected node should NOT be restored since it's invisible
+        Assert.Null(vm.SelectedCategory);
+    }
+
     // test doubles
     private sealed class FakeSaveFileService : ISaveFileService
     {
