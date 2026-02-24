@@ -58,6 +58,10 @@ Save files are typically located at:
 
 See the [User Guide](USER_GUIDE.md) for a step-by-step walkthrough of using the editor.
 
+## Roadmap
+
+See the [Roadmap](ROADMAP.md) for planned features — cross-platform support, presets, save comparison, and more.
+
 ## How it works
 
 Suzerain save files are JSON with 14 top-level keys. The `variables` field contains a Lua table serialized as a string with thousands of game state variables. The `entityUpdates` array holds entity field changes.
