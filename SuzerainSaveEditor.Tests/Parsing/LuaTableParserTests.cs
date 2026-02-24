@@ -358,4 +358,22 @@ public sealed class LuaTableParserTests
     {
         Assert.Throws<FormatException>(() => LuaTableParser.Parse("Variable={[\"x\"]=-}; "));
     }
+
+    [Fact]
+    public void Parse_ScientificNotation_NoExponentDigits_ThrowsFormatException()
+    {
+        Assert.Throws<FormatException>(() => LuaTableParser.Parse("Variable={[\"x\"]=123E}; "));
+    }
+
+    [Fact]
+    public void Parse_ScientificNotation_SignButNoExponentDigits_ThrowsFormatException()
+    {
+        Assert.Throws<FormatException>(() => LuaTableParser.Parse("Variable={[\"x\"]=123E+}; "));
+    }
+
+    [Fact]
+    public void Parse_ScientificNotation_LowercaseNoDigits_ThrowsFormatException()
+    {
+        Assert.Throws<FormatException>(() => LuaTableParser.Parse("Variable={[\"x\"]=5e}; "));
+    }
 }

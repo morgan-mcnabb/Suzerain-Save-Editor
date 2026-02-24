@@ -154,8 +154,11 @@ public static class LuaTableParser
                 pos++; // skip E/e
                 if (pos < body.Length && (body[pos] == '+' || body[pos] == '-'))
                     pos++; // skip +/-
+                var expDigitStart = pos;
                 while (pos < body.Length && char.IsDigit(body[pos]))
                     pos++;
+                if (pos == expDigitStart)
+                    throw new FormatException($"Missing exponent digits in scientific notation at position {Prefix.Length + numStart}.");
                 var raw = body[numStart..pos].ToString();
                 return (new LuaValue.Num(raw), pos);
             }
