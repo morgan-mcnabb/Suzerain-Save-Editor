@@ -394,6 +394,42 @@ public sealed class CategoryNodeViewModelTests
     }
 
     [Fact]
+    public void ApplyFilter_SameQueryTwice_DoesNotRebuildChildren()
+    {
+        var parent = CreateParentNode();
+
+        parent.ApplyFilter("Constitutional");
+        Assert.Single(parent.Children);
+        var childrenAfterFirst = parent.Children.ToList();
+
+        // track whether the collection was replaced
+        var collectionChanged = false;
+        parent.Children.CollectionChanged += (_, _) => collectionChanged = true;
+
+        parent.ApplyFilter("Constitutional");
+
+        // same visible set — collection should not have been rebuilt
+        Assert.False(collectionChanged);
+        Assert.Single(parent.Children);
+        Assert.Same(childrenAfterFirst[0], parent.Children[0]);
+    }
+
+    [Fact]
+    public void ApplyFilter_DifferentQuery_RebuildChildren()
+    {
+        var parent = CreateParentNode();
+
+        parent.ApplyFilter("Constitutional");
+        Assert.Single(parent.Children);
+
+        parent.ApplyFilter("Economy");
+
+        // different visible set — should have rebuilt
+        Assert.Single(parent.Children);
+        Assert.Equal("Situation", parent.Children[0].Label);
+    }
+
+    [Fact]
     public void ApplyFilter_ClearAfterFilter_RebuildsChildren()
     {
         var parent = CreateParentNode();
