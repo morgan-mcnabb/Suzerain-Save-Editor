@@ -98,7 +98,7 @@ public sealed class EditSession : IEditSession
 
     public bool IsFieldDirty(string fieldId) => _edits.ContainsKey(fieldId);
 
-    public IReadOnlyList<FieldEdit> GetDirtyFields() => _edits.Values.ToList();
+    public IReadOnlyCollection<FieldEdit> GetDirtyFields() => _edits.Values;
 
     public ValidationResult ValidateField(string fieldId, string value)
     {

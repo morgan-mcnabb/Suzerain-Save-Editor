@@ -15,7 +15,7 @@ public interface IEditSession
     void RevertField(string fieldId);
     void RevertAll();
     bool IsFieldDirty(string fieldId);
-    IReadOnlyList<FieldEdit> GetDirtyFields();
+    IReadOnlyCollection<FieldEdit> GetDirtyFields();
     ValidationResult ValidateField(string fieldId, string value);
     ValidationResult ValidateAll();
 }

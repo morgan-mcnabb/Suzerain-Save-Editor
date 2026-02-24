@@ -265,10 +265,10 @@ public sealed class EditSessionTests
         session.SetValue("sordland.governmentBudget", "8");
 
         var dirty = session.GetDirtyFields();
-        Assert.Single(dirty);
-        Assert.Equal("sordland.governmentBudget", dirty[0].FieldId);
-        Assert.Equal("4", dirty[0].OldValue);
-        Assert.Equal("8", dirty[0].NewValue);
+        var edit = Assert.Single(dirty);
+        Assert.Equal("sordland.governmentBudget", edit.FieldId);
+        Assert.Equal("4", edit.OldValue);
+        Assert.Equal("8", edit.NewValue);
     }
 
     [Fact]
@@ -323,8 +323,8 @@ public sealed class EditSessionTests
 
         Assert.Equal("6", session.GetValue("sordland.governmentBudget"));
         var dirty = session.GetDirtyFields();
-        Assert.Single(dirty);
-        Assert.Equal("6", dirty[0].NewValue);
+        var edit = Assert.Single(dirty);
+        Assert.Equal("6", edit.NewValue);
     }
 
     [Fact]
