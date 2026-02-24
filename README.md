@@ -60,6 +60,9 @@ Suzerain save files are JSON with 14 top-level keys. The `variables` field conta
 
 The editor parses both layers, maps known fields to a human-readable schema, and lets you edit values through a form-based UI. Unknown fields and formatting are preserved during round-tripping.
 
+> **Note:** Windows SmartScreen may show a warning since the executable is not code-signed.
+> Click **"More info"** → **"Run anyway"** to proceed. The source code is fully available for review.
+
 ## License
 
 [MIT](LICENSE)
