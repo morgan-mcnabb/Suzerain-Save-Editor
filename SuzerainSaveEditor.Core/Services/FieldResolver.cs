@@ -52,14 +52,14 @@ public sealed class FieldResolver : IFieldResolver
     private static string? ReadVariable(SaveDocument document, string path)
     {
         var key = StripPrefix(path, "variable:");
-        var variable = document.Variables.FirstOrDefault(v => v.Key == key);
-        return variable?.Value switch
+        if (!document.VariableIndex.TryGetValue(key, out var idx))
+            return null;
+        return document.Variables[idx].Value switch
         {
             LuaValue.Bool b => b.Value.ToString(),
             LuaValue.Int i => i.Value.ToString(),
             LuaValue.Num n => n.Raw,
             LuaValue.Str s => s.Value,
-            null => null,
             _ => null
         };
     }
@@ -69,11 +69,11 @@ public sealed class FieldResolver : IFieldResolver
         var key = StripPrefix(field.Path, "variable:");
         var luaValue = ConvertToLuaValue(field.Type, value);
 
-        if (!document.Variables.Any(v => v.Key == key))
+        if (!document.VariableIndex.TryGetValue(key, out var idx))
             throw new KeyNotFoundException($"Variable '{key}' not found in save document.");
 
-        var newVariables = document.Variables.Select(v =>
-            v.Key == key ? new LuaVariable(key, luaValue) : v).ToList();
+        var newVariables = new List<LuaVariable>(document.Variables);
+        newVariables[idx] = new LuaVariable(key, luaValue);
 
         return new SaveDocument
         {
@@ -87,22 +87,20 @@ public sealed class FieldResolver : IFieldResolver
     private static string? ReadEntityUpdate(SaveDocument document, string path)
     {
         var (nameInDatabase, fieldName) = ParseEntityPath(path);
-        var entity = document.EntityUpdates.FirstOrDefault(e =>
-            e.NameInDatabase == nameInDatabase && e.FieldName == fieldName);
-        return entity?.FieldValue;
+        if (!document.EntityIndex.TryGetValue((nameInDatabase, fieldName), out var idx))
+            return null;
+        return document.EntityUpdates[idx].FieldValue;
     }
 
     private static SaveDocument WriteEntityUpdate(SaveDocument document, string path, string value)
     {
         var (nameInDatabase, fieldName) = ParseEntityPath(path);
 
-        if (!document.EntityUpdates.Any(e => e.NameInDatabase == nameInDatabase && e.FieldName == fieldName))
+        if (!document.EntityIndex.TryGetValue((nameInDatabase, fieldName), out var idx))
             throw new KeyNotFoundException($"Entity update '{nameInDatabase}.{fieldName}' not found in save document.");
 
-        var newUpdates = document.EntityUpdates.Select(e =>
-            e.NameInDatabase == nameInDatabase && e.FieldName == fieldName
-                ? new EntityUpdate(nameInDatabase, fieldName, value)
-                : e).ToList();
+        var newUpdates = new List<EntityUpdate>(document.EntityUpdates);
+        newUpdates[idx] = new EntityUpdate(nameInDatabase, fieldName, value);
 
         return new SaveDocument
         {
