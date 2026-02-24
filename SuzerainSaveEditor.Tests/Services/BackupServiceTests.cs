@@ -151,6 +151,29 @@ public sealed class BackupServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task CreateBackupAsync_RelativePath_BackupCreatedNextToFile()
+    {
+        var filePath = CreateTestFile();
+        var originalDir = Directory.GetCurrentDirectory();
+
+        try
+        {
+            Directory.SetCurrentDirectory(_tempDir);
+            var relativePath = Path.GetFileName(filePath);
+
+            var backupPath = await _service.CreateBackupAsync(relativePath);
+
+            var expectedDir = Path.Combine(_tempDir, "backups");
+            Assert.Equal(expectedDir, Path.GetDirectoryName(backupPath));
+            Assert.True(File.Exists(backupPath));
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(originalDir);
+        }
+    }
+
+    [Fact]
     public async Task CreateBackupAsync_RapidBackups_CreatesSeparateFiles()
     {
         var filePath = CreateTestFile(content: "first version");

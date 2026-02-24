@@ -7,6 +7,8 @@ public sealed class BackupService : IBackupService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
 
+        filePath = Path.GetFullPath(filePath);
+
         if (!File.Exists(filePath))
             throw new FileNotFoundException("Cannot backup: file not found.", filePath);
 
