@@ -36,16 +36,11 @@ public partial class CategoryNodeViewModel : ViewModelBase
         ? $"{Label} ({TotalCount})"
         : $"{Label} ({FilteredCount}/{TotalCount})";
 
-    // breadcrumb path from root to this node
-    public string BreadcrumbPath
-    {
-        get
-        {
-            if (Parent is null)
-                return Label;
-            return $"{Parent.BreadcrumbPath} > {Label}";
-        }
-    }
+    // breadcrumb path from root to this node (cached since tree structure never changes)
+    private string? _breadcrumbPath;
+    public string BreadcrumbPath => _breadcrumbPath ??= Parent is null
+        ? Label
+        : $"{Parent.BreadcrumbPath} > {Label}";
 
     public bool IsLeaf => _allChildren.Count == 0;
 
