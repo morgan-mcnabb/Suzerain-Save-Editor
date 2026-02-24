@@ -59,13 +59,13 @@ public sealed class SavePathProviderTests
     }
 
     [SkippableFact]
-    public void GetSaveDirectories_Windows_PathContainsLocalAppData()
+    public void GetSaveDirectories_Windows_PathContainsLocalLow()
     {
         Skip.IfNot(OperatingSystem.IsWindows());
 
         var paths = _provider.GetSaveDirectories();
 
-        Assert.Contains("AppData", paths[0]);
+        Assert.Contains("LocalLow", paths[0]);
     }
 
     // linux-specific tests
