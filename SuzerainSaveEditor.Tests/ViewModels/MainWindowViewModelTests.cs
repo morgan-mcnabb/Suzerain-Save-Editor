@@ -409,6 +409,7 @@ public sealed class MainWindowViewModelTests
         await vm.OpenCommand.ExecuteAsync(null);
 
         vm.SearchText = "Budget";
+        vm.ApplyFilter();
 
         // "Government Budget" in Sordland should match
         Assert.Contains(vm.SordlandFields, f => f.Label.Contains("Budget"));
@@ -427,9 +428,11 @@ public sealed class MainWindowViewModelTests
         await vm.OpenCommand.ExecuteAsync(null);
 
         vm.SearchText = "Budget";
+        vm.ApplyFilter();
         var filteredCount = vm.SordlandFields.Count;
 
         vm.SearchText = "";
+        vm.ApplyFilter();
 
         Assert.Equal(39, vm.SordlandFields.Count);
         Assert.True(vm.SordlandFields.Count > filteredCount);
@@ -442,6 +445,7 @@ public sealed class MainWindowViewModelTests
         await vm.OpenCommand.ExecuteAsync(null);
 
         vm.SearchText = "CAMPAIGN";
+        vm.ApplyFilter();
         Assert.Contains(vm.GeneralFields, f => f.FieldId == "meta.campaignName");
     }
 
@@ -452,6 +456,7 @@ public sealed class MainWindowViewModelTests
         await vm.OpenCommand.ExecuteAsync(null);
 
         vm.SearchText = "faction";
+        vm.ApplyFilter();
         // several Sordland opinion fields have "faction" in their descriptions
         Assert.NotEmpty(vm.SordlandFields);
     }
@@ -465,6 +470,7 @@ public sealed class MainWindowViewModelTests
         // make edit before filtering so the field is still accessible
         vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
         vm.SearchText = "Budget";
+        vm.ApplyFilter();
         await vm.SaveCommand.ExecuteAsync(null);
 
         Assert.Equal("Budget", vm.SearchText);
@@ -797,6 +803,7 @@ public sealed class MainWindowViewModelTests
         await vm.OpenCommand.ExecuteAsync(null);
 
         vm.SearchText = "Diplomacy";
+        vm.ApplyFilter();
 
         // only nodes with matching fields should be visible
         Assert.True(vm.CategoryNodes.Count >= 1);
@@ -811,6 +818,7 @@ public sealed class MainWindowViewModelTests
         await vm.OpenCommand.ExecuteAsync(null);
 
         vm.SearchText = "Diplomacy";
+        vm.ApplyFilter();
 
         var turns = vm.CategoryNodes.FirstOrDefault(n => n.Key == "Turns");
         Assert.NotNull(turns);
@@ -1008,6 +1016,7 @@ public sealed class MainWindowViewModelTests
 
         // filter to something that hides "Custom"
         vm.SearchText = "Diplomacy";
+        vm.ApplyFilter();
         Assert.DoesNotContain(vm.CategoryNodes.SelectMany(n => n.Children.Prepend(n)),
             n => n.Key == "Custom");
 
@@ -1015,6 +1024,71 @@ public sealed class MainWindowViewModelTests
 
         // the previously selected node should NOT be restored since it's invisible
         Assert.Null(vm.SelectedCategory);
+    }
+
+    // search preserves category selection
+    [Fact]
+    public async Task Search_PreservesCategorySelection_WhenNodeStaysVisible()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        // select the Turns node
+        var turns = vm.CategoryNodes.FirstOrDefault(n => n.Key == "Turns");
+        Assert.NotNull(turns);
+        vm.SelectCategory(turns);
+        Assert.Same(turns, vm.SelectedCategory);
+
+        // search for something that still matches this node's fields
+        var field = turns.AllFields.First();
+        vm.SearchText = field.Label;
+        vm.ApplyFilter();
+
+        // selection should be preserved since the node is still visible
+        Assert.Same(turns, vm.SelectedCategory);
+        Assert.True(vm.HasCategorySelected);
+    }
+
+    [Fact]
+    public async Task Search_ClearsSelection_WhenNodeBecomesInvisible()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        // select a node
+        var customNode = vm.CategoryNodes.SelectMany(n => n.Children.Prepend(n))
+            .FirstOrDefault(n => n.Key == "Custom");
+        Assert.NotNull(customNode);
+        vm.SelectCategory(customNode);
+        Assert.Same(customNode, vm.SelectedCategory);
+
+        // search for something that hides the selected node
+        vm.SearchText = "Diplomacy";
+        vm.ApplyFilter();
+
+        Assert.Null(vm.SelectedCategory);
+        Assert.False(vm.HasCategorySelected);
+    }
+
+    [Fact]
+    public async Task Search_ClearingSearch_PreservesSelection()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        // select a node, then search, then clear
+        var turns = vm.CategoryNodes.FirstOrDefault(n => n.Key == "Turns");
+        Assert.NotNull(turns);
+        vm.SelectCategory(turns);
+
+        vm.SearchText = "Diplomacy";
+        vm.ApplyFilter();
+        // turns should still be visible and selected
+        Assert.Same(turns, vm.SelectedCategory);
+
+        vm.SearchText = "";
+        vm.ApplyFilter();
+        Assert.Same(turns, vm.SelectedCategory);
     }
 
     // save committed to disk flag

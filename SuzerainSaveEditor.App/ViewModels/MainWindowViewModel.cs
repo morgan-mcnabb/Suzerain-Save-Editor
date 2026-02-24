@@ -27,6 +27,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly Dictionary<string, FieldViewModel> _fieldLookup = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _validationErrors = new(StringComparer.Ordinal);
     private readonly Dictionary<string, CategoryNodeViewModel> _categoryNodeLookup = new(StringComparer.Ordinal);
+    private bool _suppressCategoryChanged;
+    private CancellationTokenSource? _searchDebounce;
+    private const int SearchDebounceMs = 250;
 
     // observable collections bound to UI (filtered by search)
     public ObservableCollection<FieldViewModel> GeneralFields { get; } = [];
@@ -190,7 +193,23 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private bool CanRevert() => IsDirty && IsFileLoaded;
 
-    partial void OnSearchTextChanged(string value) => ApplyFilter();
+    partial void OnSearchTextChanged(string value)
+    {
+        _searchDebounce?.Cancel();
+        _searchDebounce = new CancellationTokenSource();
+        var token = _searchDebounce.Token;
+        _ = ApplyFilterDebouncedAsync(token);
+    }
+
+    private async Task ApplyFilterDebouncedAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(SearchDebounceMs, token);
+            ApplyFilter();
+        }
+        catch (OperationCanceledException) { }
+    }
 
     partial void OnIsFileLoadedChanged(bool value) => OnPropertyChanged(nameof(WindowTitle));
 
@@ -205,6 +224,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnSelectedCategoryChanged(CategoryNodeViewModel? oldValue, CategoryNodeViewModel? newValue)
     {
+        if (_suppressCategoryChanged) return;
+
         if (oldValue is not null)
             oldValue.IsSelected = false;
 
@@ -510,7 +531,7 @@ public partial class MainWindowViewModel : ViewModelBase
             : "Valid";
     }
 
-    private void ApplyFilter()
+    internal void ApplyFilter()
     {
         ApplyFilterToGroup(_allGeneralFields, GeneralFields);
         ApplyFilterToGroup(_allSordlandFields, SordlandFields);
@@ -540,25 +561,38 @@ public partial class MainWindowViewModel : ViewModelBase
         var query = SearchText?.Trim() ?? "";
         var isSearching = !string.IsNullOrEmpty(query);
 
-        CategoryNodes.Clear();
-        foreach (var node in _allCategoryNodes)
+        // capture selection before clearing — Clear() triggers the TreeView
+        // two-way binding to write null back into SelectedCategory
+        var savedSelection = SelectedCategory;
+
+        _suppressCategoryChanged = true;
+        try
         {
-            node.ApplyFilter(query);
-            if (node.IsVisible)
+            CategoryNodes.Clear();
+            foreach (var node in _allCategoryNodes)
             {
-                if (isSearching)
-                    node.IsExpanded = true;
-                CategoryNodes.Add(node);
+                node.ApplyFilter(query);
+                if (node.IsVisible)
+                {
+                    if (isSearching)
+                        node.IsExpanded = true;
+                    CategoryNodes.Add(node);
+                }
             }
+
+            // restore or clear selection based on visibility
+            if (savedSelection is not null && savedSelection.IsVisible)
+                SelectedCategory = savedSelection;
+            else if (savedSelection is not null)
+                SelectedCategory = null;
+        }
+        finally
+        {
+            _suppressCategoryChanged = false;
         }
 
-        if (SelectedCategory is not null)
-        {
-            if (!SelectedCategory.IsVisible)
-                SelectedCategory = null;
-            else
-                PopulateSelectedCategoryContent();
-        }
+        // refresh content panel for the (restored or cleared) selection
+        PopulateSelectedCategoryContent();
     }
 
     private void SelectCategoryByKey(string key)
