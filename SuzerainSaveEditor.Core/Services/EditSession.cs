@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using SuzerainSaveEditor.Core.Models;
 using SuzerainSaveEditor.Core.Schema;
 
@@ -26,8 +27,15 @@ public sealed class EditSession : IEditSession
         ArgumentNullException.ThrowIfNull(schema);
         ArgumentNullException.ThrowIfNull(resolver);
 
-        OriginalDocument = document;
-        CurrentDocument = document;
+        var clone = new SaveDocument
+        {
+            Metadata = document.Metadata,
+            WarSaveData = (JsonObject)document.WarSaveData.DeepClone(),
+            Variables = document.Variables.ToList(),
+            EntityUpdates = document.EntityUpdates.ToList()
+        };
+        OriginalDocument = clone;
+        CurrentDocument = clone;
         FilePath = filePath;
         _schema = schema;
         _resolver = resolver;

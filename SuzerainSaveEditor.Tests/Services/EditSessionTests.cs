@@ -665,6 +665,71 @@ public sealed class EditSessionTests
         Assert.Contains("unknown field", validation.Error);
     }
 
+    [Fact]
+    public void Constructor_DefensiveCopy_ExternalMutationDoesNotCorruptOriginal()
+    {
+        var variables = new List<LuaVariable>
+        {
+            new("BaseGameSetup.CurrentTurn", new LuaValue.Int(5)),
+            new("BaseGame.GovernmentBudget", new LuaValue.Int(4)),
+            new("BaseGame.Economy_Taxation", new LuaValue.Int(2)),
+            new("BaseGame.Economy_EconomicState", new LuaValue.Int(3)),
+            new("BaseGame.ConstitutionReform", new LuaValue.Bool(true)),
+            new("BaseGame.Impeached", new LuaValue.Bool(false)),
+            new("BaseGameText.AlphonsoToPlayer", new LuaValue.Str("Mr. President")),
+            new("BaseGame.Opinion_OldGuard", new LuaValue.Int(5)),
+            new("BaseGame.Opinion_Reformist", new LuaValue.Int(3)),
+            new("BaseGame.Opinion_NFP", new LuaValue.Int(2)),
+            new("BaseGame.Opinion_Bluds", new LuaValue.Int(1)),
+            new("BaseGame.Opinion_Military", new LuaValue.Int(4)),
+            new("BaseGame.Opinion_Oligarchs", new LuaValue.Int(3)),
+            new("BaseGame.Relations_Rumburg", new LuaValue.Int(-2)),
+            new("BaseGame.Relations_Lespia", new LuaValue.Int(3)),
+            new("BaseGame.Relations_Agnolia", new LuaValue.Int(1)),
+            new("BaseGame.Relations_Wehlen", new LuaValue.Int(2)),
+            new("BaseGame.Relations_Contana", new LuaValue.Int(0)),
+            new("BaseGame.Relations_Valgsland", new LuaValue.Int(1)),
+            new("BaseGame.Economy_OilPrice", new LuaValue.Int(50)),
+            new("BaseGame.Economy_Healthcare_Spending", new LuaValue.Int(3)),
+            new("BaseGame.Economy_Education_Spending", new LuaValue.Int(2)),
+            new("BaseGame.Economy_LawEnforcement_Spending", new LuaValue.Int(1)),
+            new("BaseGame.Economy_Social_Spending", new LuaValue.Int(2)),
+            new("BaseGame.Economy_Infrastructure_Spending", new LuaValue.Int(1)),
+            new("RiziaDLCSetup.CurrentTurn", new LuaValue.Int(3)),
+            new("RiziaDLC.GovernmentBudget", new LuaValue.Int(7)),
+            new("RiziaDLC.RoyalTreasury", new LuaValue.Int(5)),
+            new("RiziaDLC.Opinion_Nobles", new LuaValue.Int(4)),
+            new("RiziaDLC.Opinion_Merchants", new LuaValue.Int(3)),
+            new("RiziaDLC.Opinion_Peasants", new LuaValue.Int(2)),
+            new("RiziaDLC.Opinion_Clergy", new LuaValue.Int(3)),
+            new("RiziaDLC.Opinion_Military", new LuaValue.Int(4)),
+            new("RiziaDLC.Relations_Wehlen", new LuaValue.Int(2)),
+            new("RiziaDLC.Relations_Lespia", new LuaValue.Int(1)),
+            new("RiziaDLC.Relations_Rumburg", new LuaValue.Int(-1)),
+            new("RiziaDLCText.KingsSon", new LuaValue.Str("Aldric")),
+            new("RiziaDLCText.FinalChapterTitle", new LuaValue.Str("Dawn")),
+        };
+        var originalCount = variables.Count;
+
+        var doc = new SaveDocument
+        {
+            Metadata = new SaveMetadata(3, "KING", "StoryPack_Rizia", 11, "King1",
+                2, "20-07-2025_21-10-39", "3.1.0.1.137", false, false, "test notes"),
+            WarSaveData = new JsonObject(),
+            Variables = variables,
+            EntityUpdates = CreateTestDocument().EntityUpdates
+        };
+
+        var session = new EditSession(doc, null, _schema, _resolver);
+
+        // mutate the original list after session construction
+        variables.Clear();
+
+        // session's OriginalDocument should be unaffected
+        Assert.Equal(originalCount, session.OriginalDocument.Variables.Count);
+        Assert.Equal("4", session.GetValue("sordland.governmentBudget"));
+    }
+
     private sealed class MutableSchemaService : ISchemaService
     {
         private readonly Dictionary<string, FieldDefinition> _fields = new();
