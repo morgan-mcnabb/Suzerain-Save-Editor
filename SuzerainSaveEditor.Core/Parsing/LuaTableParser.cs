@@ -65,7 +65,7 @@ public static class LuaTableParser
     private static int FindKeyEnd(ReadOnlySpan<char> body, int start)
     {
         var pos = start;
-        while (pos < body.Length - 2)
+        while (pos <= body.Length - 3)
         {
             if (body[pos] == '"' && body[pos + 1] == ']' && body[pos + 2] == '=')
                 return pos;
@@ -94,16 +94,35 @@ public static class LuaTableParser
         {
             pos++; // skip opening quote
             var valueStart = pos;
-            // read until closing quote — no escape sequences in the data
+            var sb = new System.Text.StringBuilder();
             while (pos < body.Length && body[pos] != '"')
+            {
+                if (body[pos] == '\\' && pos + 1 < body.Length)
+                {
+                    // handle escape sequences
+                    sb.Append(body[valueStart..pos]);
+                    var escaped = body[pos + 1];
+                    sb.Append(escaped switch
+                    {
+                        '"' => '"',
+                        '\\' => '\\',
+                        'n' => '\n',
+                        't' => '\t',
+                        _ => escaped
+                    });
+                    pos += 2;
+                    valueStart = pos;
+                    continue;
+                }
                 pos++;
+            }
 
             if (pos >= body.Length)
                 throw new FormatException($"Unterminated string value starting at position {Prefix.Length + valueStart - 1}.");
 
-            var value = body[valueStart..pos].ToString();
+            sb.Append(body[valueStart..pos]);
             pos++; // skip closing quote
-            return (new LuaValue.Str(value), pos);
+            return (new LuaValue.Str(sb.ToString()), pos);
         }
 
         // numeric value (possibly negative, possibly scientific notation)
@@ -119,7 +138,17 @@ public static class LuaTableParser
             if (pos == numStart || (ch == '-' && pos == numStart + 1))
                 throw new FormatException($"Invalid numeric value at position {Prefix.Length + numStart}.");
 
-            // check for scientific notation (e.g. -1E+09)
+            // check for decimal point (e.g. 3.14, -0.5)
+            var isDecimal = false;
+            if (pos < body.Length && body[pos] == '.')
+            {
+                isDecimal = true;
+                pos++; // skip .
+                while (pos < body.Length && char.IsDigit(body[pos]))
+                    pos++;
+            }
+
+            // check for scientific notation (e.g. -1E+09, 3.14e2)
             if (pos < body.Length && (body[pos] == 'E' || body[pos] == 'e'))
             {
                 pos++; // skip E/e
@@ -127,6 +156,12 @@ public static class LuaTableParser
                     pos++; // skip +/-
                 while (pos < body.Length && char.IsDigit(body[pos]))
                     pos++;
+                var raw = body[numStart..pos].ToString();
+                return (new LuaValue.Num(raw), pos);
+            }
+
+            if (isDecimal)
+            {
                 var raw = body[numStart..pos].ToString();
                 return (new LuaValue.Num(raw), pos);
             }

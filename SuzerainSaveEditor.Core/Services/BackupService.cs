@@ -17,7 +17,7 @@ public sealed class BackupService : IBackupService
         Directory.CreateDirectory(backupDir);
 
         var fileName = Path.GetFileName(filePath);
-        var timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+        var timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmssfff");
         var backupFileName = $"{fileName}.bak.{timestamp}";
         var backupPath = Path.Combine(backupDir, backupFileName);
 

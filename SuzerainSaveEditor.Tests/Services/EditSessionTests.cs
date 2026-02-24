@@ -562,4 +562,56 @@ public sealed class EditSessionTests
 
         Assert.True(result.IsValid);
     }
+
+
+    [Fact]
+    public void ValidateAll_OrphanedEdit_ReturnsError()
+    {
+        // use a mutable schema that can "forget" a field after an edit
+        var fieldDef = new FieldDefinition
+        {
+            Id = "temp.budget",
+            Path = "variable:BaseGame.GovernmentBudget",
+            Label = "Budget",
+            Group = FieldGroup.General,
+            Type = FieldType.Int,
+            Source = FieldSource.Variable
+        };
+        var mutableSchema = new MutableSchemaService(fieldDef);
+        var session = new EditSession(CreateTestDocument(), null, mutableSchema, _resolver);
+
+        // make an edit while the field exists
+        var result = session.SetValue("temp.budget", "8");
+        Assert.True(result.IsValid);
+        Assert.True(session.IsDirty);
+
+        // remove the field from the schema (simulating schema change)
+        mutableSchema.RemoveField("temp.budget");
+
+        // ValidateAll should now report the orphaned edit
+        var validation = session.ValidateAll();
+        Assert.False(validation.IsValid);
+        Assert.Contains("unknown field", validation.Error);
+    }
+
+    private sealed class MutableSchemaService : ISchemaService
+    {
+        private readonly Dictionary<string, FieldDefinition> _fields = new();
+
+        public MutableSchemaService(params FieldDefinition[] fields)
+        {
+            foreach (var f in fields)
+                _fields[f.Id] = f;
+        }
+
+        public void RemoveField(string id) => _fields.Remove(id);
+
+        public IReadOnlyList<FieldDefinition> GetAll() => _fields.Values.ToList();
+        public IReadOnlyList<FieldDefinition> GetByGroup(FieldGroup group) =>
+            _fields.Values.Where(f => f.Group == group).ToList();
+        public FieldDefinition? GetById(string id) =>
+            _fields.GetValueOrDefault(id);
+        public IReadOnlyList<FieldDefinition> Search(string query) =>
+            _fields.Values.Where(f => f.Label.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
+    }
 }

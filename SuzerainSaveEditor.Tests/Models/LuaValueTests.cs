@@ -121,4 +121,26 @@ public sealed class LuaValueTests
         var b = new LuaValue.Num("-1E+09");
         Assert.Equal(a, b);
     }
+
+
+    [Fact]
+    public void Str_WithQuotes_ToLuaString_EscapesQuotes()
+    {
+        var value = new LuaValue.Str("say \"hello\"");
+        Assert.Equal("\"say \\\"hello\\\"\"", value.ToLuaString());
+    }
+
+    [Fact]
+    public void Str_WithBackslash_ToLuaString_EscapesBackslash()
+    {
+        var value = new LuaValue.Str("path\\to\\file");
+        Assert.Equal("\"path\\\\to\\\\file\"", value.ToLuaString());
+    }
+
+    [Fact]
+    public void Str_WithBackslashAndQuote_ToLuaString_EscapesBoth()
+    {
+        var value = new LuaValue.Str("a\\\"b");
+        Assert.Equal("\"a\\\\\\\"b\"", value.ToLuaString());
+    }
 }

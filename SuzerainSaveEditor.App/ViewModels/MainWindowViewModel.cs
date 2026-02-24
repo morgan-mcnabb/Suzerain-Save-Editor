@@ -522,6 +522,10 @@ public partial class MainWindowViewModel : ViewModelBase
                 CategoryNodes.Add(node);
             }
         }
+
+        // clear selection if the selected node was filtered out
+        if (SelectedCategory is not null && !SelectedCategory.IsVisible)
+            SelectedCategory = null;
     }
 
     private void SelectCategoryByKey(string key)

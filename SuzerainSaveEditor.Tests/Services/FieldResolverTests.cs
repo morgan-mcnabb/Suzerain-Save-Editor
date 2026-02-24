@@ -133,7 +133,6 @@ public sealed class FieldResolverTests
         Assert.Null(result);
     }
 
-    // --- read metadata ---
 
     [Fact]
     public void ReadValue_Metadata_String_ReturnsValue()
@@ -180,14 +179,12 @@ public sealed class FieldResolverTests
     }
 
     [Fact]
-    public void ReadValue_Metadata_UnknownProperty_ReturnsNull()
+    public void ReadValue_Metadata_UnknownProperty_ThrowsArgumentException()
     {
         var doc = CreateTestDocument();
         var field = MakeField("test", "meta:nonExistentProperty", FieldSource.Metadata);
 
-        var result = _resolver.ReadValue(doc, field);
-
-        Assert.Null(result);
+        Assert.Throws<ArgumentException>(() => _resolver.ReadValue(doc, field));
     }
 
     // --- write variable ---
@@ -253,7 +250,6 @@ public sealed class FieldResolverTests
         Assert.Equal("4", _resolver.ReadValue(doc, field));
     }
 
-    // --- write entity update ---
 
     [Fact]
     public void WriteValue_Entity_UpdatesFieldValue()
@@ -289,7 +285,6 @@ public sealed class FieldResolverTests
         Assert.Equal("2", _resolver.ReadValue(doc, field));
     }
 
-    // --- write metadata ---
 
     [Fact]
     public void WriteValue_Metadata_String_UpdatesValue()
@@ -347,7 +342,6 @@ public sealed class FieldResolverTests
         Assert.Equal("11", _resolver.ReadValue(result, turnField));
     }
 
-    // --- bool normalization ---
 
     [Fact]
     public void ReadValue_Entity_BoolType_NormalizesToConsistentCasing()
@@ -423,5 +417,21 @@ public sealed class FieldResolverTests
         var field = MakeField("test", "entity:NonExistent.FieldName", FieldSource.EntityUpdate);
 
         Assert.Throws<KeyNotFoundException>(() => _resolver.WriteValue(doc, field, "42"));
+    }
+
+
+    [Fact]
+    public void ReadValue_BoolField_UnparseableValue_ThrowsFormatException()
+    {
+        var doc = new SaveDocument
+        {
+            Metadata = CreateTestDocument().Metadata,
+            WarSaveData = new JsonObject(),
+            Variables = [],
+            EntityUpdates = [new EntityUpdate("Test_Entity", "IsActive", "maybe")]
+        };
+        var field = MakeField("test", "entity:Test_Entity.IsActive", FieldSource.EntityUpdate, FieldType.Bool);
+
+        Assert.Throws<FormatException>(() => _resolver.ReadValue(doc, field));
     }
 }

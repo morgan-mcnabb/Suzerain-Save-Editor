@@ -15,7 +15,7 @@ public abstract record LuaValue
 
     public sealed record Str(string Value) : LuaValue
     {
-        public override string ToLuaString() => $"\"{Value}\"";
+        public override string ToLuaString() => $"\"{Value.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
     }
 
     // scientific notation numbers (e.g. -1E+09) — preserves raw format for round-trip

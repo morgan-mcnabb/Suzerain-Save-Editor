@@ -23,8 +23,12 @@ public sealed class FieldResolver : IFieldResolver
         };
 
         // normalize bool values to consistent casing regardless of source
-        if (raw is not null && field.Type == FieldType.Bool && bool.TryParse(raw, out var b))
-            return b.ToString();
+        if (raw is not null && field.Type == FieldType.Bool)
+        {
+            if (bool.TryParse(raw, out var b))
+                return b.ToString();
+            throw new FormatException($"Field '{field.Id}' is typed as bool but contains unparseable value '{raw}'.");
+        }
 
         return raw;
     }
@@ -124,7 +128,7 @@ public sealed class FieldResolver : IFieldResolver
             "isVersionMismatched" => document.Metadata.IsVersionMismatched.ToString(),
             "isTorporModeOn" => document.Metadata.IsTorporModeOn.ToString(),
             "notes" => document.Metadata.Notes,
-            _ => null
+            _ => throw new ArgumentException($"Unknown metadata property: {property}")
         };
     }
 

@@ -13,6 +13,14 @@ public sealed class CompositeSchemaService : ISchemaService
         ArgumentNullException.ThrowIfNull(discoveredFields);
 
         _allFields = baseSchema.GetAll().Concat(discoveredFields).ToList();
+
+        // detect duplicate field IDs between base schema and discovered fields
+        var baseIds = new HashSet<string>(baseSchema.GetAll().Select(f => f.Id));
+        var duplicates = discoveredFields.Where(f => baseIds.Contains(f.Id)).Select(f => f.Id).ToList();
+        if (duplicates.Count > 0)
+            throw new InvalidOperationException(
+                $"Duplicate field IDs detected between base schema and discovered fields: {string.Join(", ", duplicates)}");
+
         _byId = _allFields.ToDictionary(f => f.Id);
         _byGroup = _allFields
             .GroupBy(f => f.Group)

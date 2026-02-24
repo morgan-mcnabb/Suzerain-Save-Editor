@@ -179,4 +179,21 @@ public sealed class CompositeSchemaServiceTests
     {
         Assert.Throws<ArgumentNullException>(() => new CompositeSchemaService(_baseSchema, null!));
     }
+
+    [Fact]
+    public void Constructor_DuplicateFieldId_ThrowsInvalidOperationException()
+    {
+        var baseField = _baseSchema.GetAll()[0];
+        var duplicate = new FieldDefinition
+        {
+            Id = baseField.Id,
+            Path = "variable:Duplicate.Path",
+            Label = "Duplicate",
+            Group = FieldGroup.Advanced,
+            Type = FieldType.Bool,
+            Source = FieldSource.Variable
+        };
+
+        Assert.Throws<InvalidOperationException>(() => new CompositeSchemaService(_baseSchema, [duplicate]));
+    }
 }

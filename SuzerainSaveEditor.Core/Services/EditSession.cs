@@ -93,7 +93,8 @@ public sealed class EditSession : IEditSession
         foreach (var edit in _edits.Values)
         {
             var field = _schema.GetById(edit.FieldId);
-            if (field is null) continue;
+            if (field is null)
+                return ValidationResult.Failure($"Edit references unknown field '{edit.FieldId}' not found in schema.");
             var validation = ValidateFieldValue(field, edit.NewValue);
             if (!validation.IsValid)
                 return validation;
