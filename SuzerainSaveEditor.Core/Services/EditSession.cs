@@ -70,11 +70,22 @@ public sealed class EditSession : IEditSession
         ArgumentNullException.ThrowIfNull(value);
 
         var field = GetFieldOrThrow(fieldId);
+        var originalValue = _resolver.ReadValue(OriginalDocument, field);
+
+        // clearing a field that was never set is a no-op, not a validation error
+        if (value.Length == 0 && originalValue is null)
+        {
+            lock (_lock)
+            {
+                if (_edits.Remove(fieldId))
+                    RebuildCurrentDocument();
+            }
+            return ValidationResult.Success;
+        }
+
         var validation = ValidateFieldValue(field, value);
         if (!validation.IsValid)
             return validation;
-
-        var originalValue = _resolver.ReadValue(OriginalDocument, field);
 
         // normalize both sides so semantically equal values (e.g. "1.0" vs "1E+00") match
         var normalizedValue = NormalizeValue(field, value);
@@ -213,6 +224,9 @@ public sealed class EditSession : IEditSession
 
     private static ValidationResult ValidateFieldValue(FieldDefinition field, string value)
     {
+        if (value.Length == 0 && field.Type is not FieldType.String)
+            return ValidationResult.Failure("Value is required.");
+
         return field.Type switch
         {
             FieldType.Bool => ValidateBool(value),

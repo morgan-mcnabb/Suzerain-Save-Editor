@@ -65,11 +65,12 @@ public sealed class FieldResolver : IFieldResolver
     {
         var key = StripPrefix(field.Path, "variable:");
         var luaValue = ConvertToLuaValue(field.Type, value);
+        var variable = new LuaVariable(key, luaValue);
 
         if (!document.VariableIndex.TryGetValue(key, out var idx))
-            throw new KeyNotFoundException($"Variable '{key}' not found in save document.");
+            return document.AddVariable(variable);
 
-        return document.ReplaceVariable(idx, new LuaVariable(key, luaValue));
+        return document.ReplaceVariable(idx, variable);
     }
 
     private static string? ReadEntityUpdate(SaveDocument document, string path)
@@ -83,11 +84,12 @@ public sealed class FieldResolver : IFieldResolver
     private static SaveDocument WriteEntityUpdate(SaveDocument document, string path, string value)
     {
         var (nameInDatabase, fieldName) = ParseEntityPath(path);
+        var entity = new EntityUpdate(nameInDatabase, fieldName, value);
 
         if (!document.EntityIndex.TryGetValue((nameInDatabase, fieldName), out var idx))
-            throw new KeyNotFoundException($"Entity update '{nameInDatabase}.{fieldName}' not found in save document.");
+            return document.AddEntityUpdate(entity);
 
-        return document.ReplaceEntityUpdate(idx, new EntityUpdate(nameInDatabase, fieldName, value));
+        return document.ReplaceEntityUpdate(idx, entity);
     }
 
     private static string? ReadMetadata(SaveDocument document, string path)
