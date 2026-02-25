@@ -387,6 +387,38 @@ public sealed class LuaTableParserTests
 
 
     [Fact]
+    public void Parse_IntegerAboveMaxValue_ReturnsNumValue()
+    {
+        var result = LuaTableParser.Parse("Variable={[\"big\"]=3000000000}; ");
+
+        Assert.Single(result);
+        var num = Assert.IsType<LuaValue.Num>(result[0].Value);
+        Assert.Equal("3000000000", num.Raw);
+        Assert.Equal(3_000_000_000.0, num.NumericValue);
+    }
+
+    [Fact]
+    public void Parse_NegativeIntegerBelowMinValue_ReturnsNumValue()
+    {
+        var result = LuaTableParser.Parse("Variable={[\"neg\"]=-3000000000}; ");
+
+        Assert.Single(result);
+        var num = Assert.IsType<LuaValue.Num>(result[0].Value);
+        Assert.Equal("-3000000000", num.Raw);
+        Assert.Equal(-3_000_000_000.0, num.NumericValue);
+    }
+
+    [Fact]
+    public void RoundTrip_LargeInteger_PreservesRawValue()
+    {
+        var input = "Variable={[\"big\"]=3000000000}; ";
+        var parsed = LuaTableParser.Parse(input);
+        var serialized = LuaTableSerializer.Serialize(parsed);
+
+        Assert.Equal(input, serialized);
+    }
+
+    [Fact]
     public void Parse_KeyEndAtVeryEndOfBody_ParsesCorrectly()
     {
         // the "]=true sequence ends at the very last positions of the body

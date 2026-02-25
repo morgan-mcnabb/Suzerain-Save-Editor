@@ -200,7 +200,7 @@ public static class LuaTableParser
 
             var numStr = body[numStart..pos];
             if (!int.TryParse(numStr, out var intValue))
-                throw new FormatException($"Could not parse integer '{numStr}' at position {Prefix.Length + numStart}.");
+                return (new LuaValue.Num(numStr.ToString()), pos);
 
             return (new LuaValue.Int(intValue), pos);
         }
