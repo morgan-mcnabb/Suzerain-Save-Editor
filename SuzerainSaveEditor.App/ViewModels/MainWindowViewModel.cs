@@ -204,6 +204,7 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnSearchTextChanged(string value)
     {
         _searchDebounce?.Cancel();
+        _searchDebounce?.Dispose();
         _searchDebounce = new CancellationTokenSource();
         var token = _searchDebounce.Token;
         _ = ApplyFilterDebouncedAsync(token);
@@ -320,6 +321,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void ClearLoadedState()
     {
+        _searchDebounce?.Cancel();
+        _searchDebounce?.Dispose();
+        _searchDebounce = null;
+
         _editSession = null;
         _activeSchema = null;
 
