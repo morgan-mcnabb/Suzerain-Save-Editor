@@ -338,6 +338,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _editSession = null;
         _activeSchema = null;
 
+        // detach callbacks before clearing to break delegate reference to this VM
+        foreach (var field in AllFields())
+            field.Detach();
+
         _allGeneralFields.Clear();
         _allSordlandFields.Clear();
         _allRiziaFields.Clear();

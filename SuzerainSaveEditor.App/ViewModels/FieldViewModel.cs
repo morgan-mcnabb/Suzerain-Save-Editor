@@ -6,7 +6,7 @@ namespace SuzerainSaveEditor.App.ViewModels;
 // represents a single editable field in the UI with type-specific bindings
 public sealed partial class FieldViewModel : ViewModelBase
 {
-    private readonly Action<string, string>? _onValueChanged;
+    private Action<string, string>? _onValueChanged;
     private bool _suppressChanges;
     private bool _suppressBoolNotify;
 
@@ -131,6 +131,9 @@ public sealed partial class FieldViewModel : ViewModelBase
         if (IsBool)
             OnPropertyChanged(nameof(BoolValue));
     }
+
+    // release the callback reference so the captured parent viewmodel can be GC'd
+    public void Detach() => _onValueChanged = null;
 
     // reset to original value without triggering the change callback
     public void ResetToOriginal()
