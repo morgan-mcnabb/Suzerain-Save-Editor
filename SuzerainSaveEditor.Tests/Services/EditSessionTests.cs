@@ -172,10 +172,17 @@ public sealed class EditSessionTests
     }
 
     [Fact]
-    public void NewSession_CurrentDocument_IsSameAsOriginal()
+    public void NewSession_CurrentDocument_IsDistinctFromOriginal()
     {
         var session = CreateSession();
-        Assert.Same(session.OriginalDocument, session.CurrentDocument);
+        Assert.NotSame(session.OriginalDocument, session.CurrentDocument);
+    }
+
+    [Fact]
+    public void NewSession_WarSaveData_IsIsolatedBetweenDocuments()
+    {
+        var session = CreateSession();
+        Assert.NotSame(session.OriginalDocument.WarSaveData, session.CurrentDocument.WarSaveData);
     }
 
     [Fact]
@@ -621,6 +628,7 @@ public sealed class EditSessionTests
         session.RevertAll();
 
         Assert.NotSame(session.OriginalDocument, session.CurrentDocument);
+        Assert.NotSame(session.OriginalDocument.WarSaveData, session.CurrentDocument.WarSaveData);
     }
 
     [Fact]

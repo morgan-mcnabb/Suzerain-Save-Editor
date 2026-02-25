@@ -27,15 +27,23 @@ public sealed class EditSession : IEditSession
         ArgumentNullException.ThrowIfNull(schema);
         ArgumentNullException.ThrowIfNull(resolver);
 
-        var clone = new SaveDocument
+        var variables = document.Variables.ToList();
+        var entities = document.EntityUpdates.ToList();
+
+        OriginalDocument = new SaveDocument
         {
             Metadata = document.Metadata,
             WarSaveData = (JsonObject)document.WarSaveData.DeepClone(),
-            Variables = document.Variables.ToList(),
-            EntityUpdates = document.EntityUpdates.ToList()
+            Variables = variables,
+            EntityUpdates = entities
         };
-        OriginalDocument = clone;
-        CurrentDocument = clone;
+        CurrentDocument = new SaveDocument
+        {
+            Metadata = document.Metadata,
+            WarSaveData = (JsonObject)document.WarSaveData.DeepClone(),
+            Variables = variables,
+            EntityUpdates = entities
+        };
         FilePath = filePath;
         _schema = schema;
         _resolver = resolver;
@@ -97,7 +105,7 @@ public sealed class EditSession : IEditSession
         CurrentDocument = new SaveDocument
         {
             Metadata = OriginalDocument.Metadata,
-            WarSaveData = OriginalDocument.WarSaveData,
+            WarSaveData = (JsonObject)OriginalDocument.WarSaveData.DeepClone(),
             Variables = OriginalDocument.Variables,
             EntityUpdates = OriginalDocument.EntityUpdates
         };
@@ -129,7 +137,13 @@ public sealed class EditSession : IEditSession
 
     private void RebuildCurrentDocument()
     {
-        var doc = OriginalDocument;
+        var doc = new SaveDocument
+        {
+            Metadata = OriginalDocument.Metadata,
+            WarSaveData = (JsonObject)OriginalDocument.WarSaveData.DeepClone(),
+            Variables = OriginalDocument.Variables,
+            EntityUpdates = OriginalDocument.EntityUpdates
+        };
         foreach (var edit in _edits.Values)
         {
             var field = _schema.GetById(edit.FieldId);
