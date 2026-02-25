@@ -14,6 +14,7 @@ public sealed class SchemaService : ISchemaService
     private readonly IReadOnlyList<FieldDefinition> _fields;
     private readonly Dictionary<string, FieldDefinition> _byId;
     private readonly Dictionary<FieldGroup, List<FieldDefinition>> _byGroup;
+    private readonly Dictionary<string, string> _searchIndex;
 
     public SchemaService()
     {
@@ -22,6 +23,7 @@ public sealed class SchemaService : ISchemaService
         _byGroup = _fields
             .GroupBy(f => f.Group)
             .ToDictionary(g => g.Key, g => g.ToList());
+        _searchIndex = FieldSearchIndex.Build(_fields);
     }
 
     public IReadOnlyList<FieldDefinition> GetAll() => _fields;
@@ -37,11 +39,7 @@ public sealed class SchemaService : ISchemaService
         if (string.IsNullOrWhiteSpace(query))
             return _fields;
 
-        return _fields
-            .Where(f => f.Label.Contains(query, StringComparison.OrdinalIgnoreCase)
-                     || f.Id.Contains(query, StringComparison.OrdinalIgnoreCase)
-                     || (f.Description?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false))
-            .ToList();
+        return FieldSearchIndex.Search(_fields, _searchIndex, query);
     }
 
     private static IReadOnlyList<FieldDefinition> LoadEmbeddedSchema()
