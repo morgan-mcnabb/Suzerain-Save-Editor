@@ -613,14 +613,28 @@ public sealed class EditSessionTests
     }
 
     [Fact]
-    public void RevertAll_RestoresCurrentDocumentToOriginal()
+    public void RevertAll_CurrentDocumentIsDistinctInstance()
     {
         var session = CreateSession();
         session.SetValue("sordland.governmentBudget", "8");
 
         session.RevertAll();
 
-        Assert.Same(session.OriginalDocument, session.CurrentDocument);
+        Assert.NotSame(session.OriginalDocument, session.CurrentDocument);
+    }
+
+    [Fact]
+    public void RevertAll_EditAfterRevert_DoesNotCorruptOriginalDocument()
+    {
+        var session = CreateSession();
+        session.SetValue("sordland.governmentBudget", "8");
+        session.RevertAll();
+
+        session.SetValue("sordland.governmentBudget", "99");
+
+        var field = _schema.GetById("sordland.governmentBudget")!;
+        Assert.Equal("4", _resolver.ReadValue(session.OriginalDocument, field));
+        Assert.Equal("99", session.GetValue("sordland.governmentBudget"));
     }
 
     // --- int with no min/max ---

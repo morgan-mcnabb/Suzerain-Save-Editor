@@ -94,7 +94,13 @@ public sealed class EditSession : IEditSession
     public void RevertAll()
     {
         _edits.Clear();
-        CurrentDocument = OriginalDocument;
+        CurrentDocument = new SaveDocument
+        {
+            Metadata = OriginalDocument.Metadata,
+            WarSaveData = OriginalDocument.WarSaveData,
+            Variables = OriginalDocument.Variables,
+            EntityUpdates = OriginalDocument.EntityUpdates
+        };
     }
 
     public bool IsFieldDirty(string fieldId) => _edits.ContainsKey(fieldId);
