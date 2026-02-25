@@ -154,6 +154,29 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task OpenCommand_LoadFailure_ClearsStaleState()
+    {
+        var failOnSecond = new FailOnSecondOpenSaveFileService(CreateTestDocument());
+        var vm = CreateViewModel(saveFileService: failOnSecond);
+
+        // first open succeeds
+        await vm.OpenCommand.ExecuteAsync(null);
+        Assert.True(vm.IsFileLoaded);
+        Assert.NotEmpty(vm.GeneralFields);
+
+        // second open fails — stale state from first load should be cleared
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        Assert.False(vm.IsFileLoaded);
+        Assert.Empty(vm.GeneralFields);
+        Assert.Empty(vm.SordlandFields);
+        Assert.Empty(vm.RiziaFields);
+        Assert.False(vm.IsDirty);
+        Assert.Equal(0, vm.ChangeCount);
+        Assert.Contains("Failed to load", vm.StatusMessage);
+    }
+
+    [Fact]
     public async Task OpenCommand_SetsCorrectFieldCount()
     {
         var vm = CreateViewModel();
@@ -1318,8 +1341,25 @@ public sealed class MainWindowViewModelTests
 
         // save succeeded but reload failed — flag should be true
         Assert.True(vm.SaveCommittedToDisk);
-        Assert.True(vm.IsDirty);
+        Assert.False(vm.IsDirty);
         Assert.False(vm.IsFileLoaded);
+    }
+
+    [Fact]
+    public async Task SaveCommittedToDisk_ReloadFailure_ClearsStaleState()
+    {
+        var failOnReload = new FailOnReloadSaveFileService(CreateTestDocument());
+        var vm = CreateViewModel(saveFileService: failOnReload);
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        // stale fields and collections should be cleared
+        Assert.Empty(vm.GeneralFields);
+        Assert.Empty(vm.SordlandFields);
+        Assert.Empty(vm.RiziaFields);
+        Assert.Equal(0, vm.ChangeCount);
     }
 
     [Fact]
@@ -1333,22 +1373,6 @@ public sealed class MainWindowViewModelTests
         await vm.SaveCommand.ExecuteAsync(null);
 
         // save itself failed — flag should remain false
-        Assert.False(vm.SaveCommittedToDisk);
-    }
-
-    [Fact]
-    public async Task SaveCommittedToDisk_ResetOnNewEdit()
-    {
-        var failOnReload = new FailOnReloadSaveFileService(CreateTestDocument());
-        var vm = CreateViewModel(saveFileService: failOnReload);
-        await vm.OpenCommand.ExecuteAsync(null);
-
-        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
-        await vm.SaveCommand.ExecuteAsync(null);
-        Assert.True(vm.SaveCommittedToDisk);
-
-        // making a new edit should reset the flag
-        vm.GeneralFields.First(f => f.FieldId == "meta.notes").Value = "new notes";
         Assert.False(vm.SaveCommittedToDisk);
     }
 
@@ -1399,6 +1423,25 @@ public sealed class MainWindowViewModelTests
 
         public Task SaveAsync(string filePath, SaveDocument document)
             => throw new IOException("Simulated save failure");
+    }
+
+    private sealed class FailOnSecondOpenSaveFileService : ISaveFileService
+    {
+        private readonly SaveDocument _document;
+        private int _openCount;
+
+        public FailOnSecondOpenSaveFileService(SaveDocument document) => _document = document;
+
+        public Task<SaveDocument> OpenAsync(string filePath)
+        {
+            _openCount++;
+            if (_openCount > 1)
+                throw new IOException("Simulated open failure");
+            return Task.FromResult(_document);
+        }
+
+        public Task SaveAsync(string filePath, SaveDocument document)
+            => Task.CompletedTask;
     }
 
     private sealed class FakeFileDialogService : IFileDialogService

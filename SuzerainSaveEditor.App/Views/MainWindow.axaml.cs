@@ -1,3 +1,5 @@
+using System.IO;
+using System.Security;
 using Avalonia.Controls;
 using SuzerainSaveEditor.App.ViewModels;
 
@@ -39,7 +41,7 @@ public partial class MainWindow : Window
                     {
                         await vm.SaveCommand.ExecuteAsync(null);
                     }
-                    catch
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
                     {
                         // save failed — keep window open so user can retry or discard
                         break;

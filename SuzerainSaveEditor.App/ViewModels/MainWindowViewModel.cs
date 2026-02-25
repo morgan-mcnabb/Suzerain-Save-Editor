@@ -157,8 +157,8 @@ public partial class MainWindowViewModel : ViewModelBase
             }
             catch (Exception ex)
             {
+                ClearLoadedState();
                 StatusMessage = $"Failed to load: {ex.Message}";
-                IsFileLoaded = false;
                 return;
             }
 
@@ -280,8 +280,8 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
+            ClearLoadedState();
             StatusMessage = $"Failed to load: {ex.Message}";
-            IsFileLoaded = false;
         }
         finally
         {
@@ -316,6 +316,41 @@ public partial class MainWindowViewModel : ViewModelBase
         UpdateDirtyState();
 
         StatusMessage = $"Loaded: {Path.GetFileName(path)}";
+    }
+
+    private void ClearLoadedState()
+    {
+        _editSession = null;
+        _activeSchema = null;
+
+        _allGeneralFields.Clear();
+        _allSordlandFields.Clear();
+        _allRiziaFields.Clear();
+        _allAdvancedFields.Clear();
+        _allCategoryNodes.Clear();
+        _fieldLookup.Clear();
+        _validationErrors.Clear();
+        _categoryNodeLookup.Clear();
+        _savedExpansionStates = null;
+
+        GeneralFields.Clear();
+        SordlandFields.Clear();
+        RiziaFields.Clear();
+        CategoryNodes.Clear();
+        SelectedCategoryFields.Clear();
+        SubCategorySummaries.Clear();
+        BreadcrumbItems.Clear();
+
+        AdvancedFieldCount = 0;
+        SelectedCategory = null;
+        HasCategorySelected = false;
+        ShowCategoryCards = false;
+        ShowCategoryFields = false;
+        SelectedCategoryPath = "";
+        FilePath = "";
+        IsFileLoaded = false;
+
+        UpdateDirtyState();
     }
 
     private void PopulateFields()
