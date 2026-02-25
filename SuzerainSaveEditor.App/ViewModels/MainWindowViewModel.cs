@@ -207,10 +207,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         var old = Interlocked.Exchange(ref _searchDebounce, newCts);
         old?.Cancel();
         old?.Dispose();
-        _ = ApplyFilterDebouncedAsync(newCts.Token);
+        BeginApplyFilterDebounced(newCts.Token);
     }
 
-    private async Task ApplyFilterDebouncedAsync(CancellationToken token)
+    // async void is intentional — this is an event handler dispatch and all
+    // exceptions are caught internally so no Task needs to be observed
+    private async void BeginApplyFilterDebounced(CancellationToken token)
     {
         try
         {
