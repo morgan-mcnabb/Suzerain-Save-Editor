@@ -20,10 +20,10 @@ public sealed class SaveDocument
     private Dictionary<(string NameInDatabase, string FieldName), int>? _entityIndex;
 
     internal Dictionary<string, int> VariableIndex =>
-        _variableIndex ??= BuildVariableIndex();
+        LazyInitializer.EnsureInitialized(ref _variableIndex, BuildVariableIndex);
 
     internal Dictionary<(string NameInDatabase, string FieldName), int> EntityIndex =>
-        _entityIndex ??= BuildEntityIndex();
+        LazyInitializer.EnsureInitialized(ref _entityIndex, BuildEntityIndex);
 
     
     internal SaveDocument ReplaceMetadata(SaveMetadata metadata)
