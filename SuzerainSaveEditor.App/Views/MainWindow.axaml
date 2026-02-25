@@ -72,6 +72,25 @@
         <Style Selector="Button.breadcrumb-link:pointerover TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource AccentPrimary}" />
         </Style>
+
+        <!-- virtualized field list: suppress ListBox selection/hover chrome -->
+        <Style Selector="ListBox.field-list">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+        </Style>
+        <Style Selector="ListBox.field-list ListBoxItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+        </Style>
+        <Style Selector="ListBox.field-list ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.field-list ListBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
     </Window.Styles>
 
     <Design.DataContext>
@@ -346,27 +365,21 @@
                             Padding="0"
                             Margin="0">
                     <TabItem Header="General">
-                        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-                            <ItemsControl ItemsSource="{Binding GeneralFields}"
-                                          ItemTemplate="{StaticResource FieldEditorTemplate}"
-                                          Padding="8,4" />
-                        </ScrollViewer>
+                        <ListBox Classes="field-list"
+                                 ItemsSource="{Binding GeneralFields}"
+                                 ItemTemplate="{StaticResource FieldEditorTemplate}" />
                     </TabItem>
 
                     <TabItem Header="Sordland">
-                        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-                            <ItemsControl ItemsSource="{Binding SordlandFields}"
-                                          ItemTemplate="{StaticResource FieldEditorTemplate}"
-                                          Padding="8,4" />
-                        </ScrollViewer>
+                        <ListBox Classes="field-list"
+                                 ItemsSource="{Binding SordlandFields}"
+                                 ItemTemplate="{StaticResource FieldEditorTemplate}" />
                     </TabItem>
 
                     <TabItem Header="Rizia">
-                        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-                            <ItemsControl ItemsSource="{Binding RiziaFields}"
-                                          ItemTemplate="{StaticResource FieldEditorTemplate}"
-                                          Padding="8,4" />
-                        </ScrollViewer>
+                        <ListBox Classes="field-list"
+                                 ItemsSource="{Binding RiziaFields}"
+                                 ItemTemplate="{StaticResource FieldEditorTemplate}" />
                     </TabItem>
 
                     <TabItem>
@@ -579,28 +592,11 @@
                                         </ItemsControl>
                                     </ScrollViewer>
 
-                                    <!-- field list (leaf nodes) — ListBox for virtualization -->
-                                    <ListBox ItemsSource="{Binding SelectedCategoryFields}"
+                                    <!-- field list (leaf nodes) -->
+                                    <ListBox Classes="field-list"
+                                             ItemsSource="{Binding SelectedCategoryFields}"
                                              ItemTemplate="{StaticResource FieldEditorTemplate}"
-                                             IsVisible="{Binding ShowCategoryFields}"
-                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                             Background="Transparent"
-                                             BorderThickness="0"
-                                             Padding="8,4">
-                                        <ListBox.Styles>
-                                            <Style Selector="ListBoxItem">
-                                                <Setter Property="Padding" Value="0" />
-                                                <Setter Property="Margin" Value="0" />
-                                                <Setter Property="MinHeight" Value="0" />
-                                            </Style>
-                                            <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
-                                                <Setter Property="Background" Value="Transparent" />
-                                            </Style>
-                                            <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
-                                                <Setter Property="Background" Value="Transparent" />
-                                            </Style>
-                                        </ListBox.Styles>
-                                    </ListBox>
+                                             IsVisible="{Binding ShowCategoryFields}" />
                                 </Panel>
                             </DockPanel>
                         </Grid>
