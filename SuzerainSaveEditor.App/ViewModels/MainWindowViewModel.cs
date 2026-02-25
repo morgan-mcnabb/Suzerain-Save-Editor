@@ -218,6 +218,10 @@ public partial class MainWindowViewModel : ViewModelBase
             ApplyFilter();
         }
         catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Filter error: {ex.Message}";
+        }
     }
 
     partial void OnIsFileLoadedChanged(bool value) => OnPropertyChanged(nameof(WindowTitle));
