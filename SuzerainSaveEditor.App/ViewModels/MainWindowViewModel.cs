@@ -434,69 +434,13 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     private void BuildCategoryTree(ISchemaService schema)
     {
+        var result = CategoryTreeBuilder.Build(_allAdvancedFields, schema, _fieldLookup);
+
         _categoryNodeLookup.Clear();
+        foreach (var (key, node) in result.NodeLookup)
+            _categoryNodeLookup[key] = node;
 
-        // get field definitions for advanced fields
-        var advancedDefs = _allAdvancedFields
-            .Select(vm => schema.GetById(vm.FieldId))
-            .Where(d => d is not null)
-            .Cast<FieldDefinition>()
-            .ToList();
-
-        // build hierarchical categories
-        var categories = AdvancedFieldGrouper.GroupFieldsHierarchical(advancedDefs);
-
-        // convert FieldCategory tree → CategoryNodeViewModel tree
-        foreach (var category in categories)
-        {
-            var node = BuildCategoryNode(category, _fieldLookup, parent: null);
-            _allCategoryNodes.Add(node);
-            IndexCategoryNode(node);
-        }
-    }
-
-    private void IndexCategoryNode(CategoryNodeViewModel node)
-    {
-        _categoryNodeLookup[node.Key] = node;
-        foreach (var child in node.Children)
-            IndexCategoryNode(child);
-    }
-
-    private static CategoryNodeViewModel BuildCategoryNode(
-        FieldCategory category,
-        Dictionary<string, FieldViewModel> vmLookup,
-        CategoryNodeViewModel? parent)
-    {
-        // resolve field VMs for this category's leaf fields
-        var fieldVms = new List<FieldViewModel>();
-        foreach (var def in category.Fields)
-        {
-            if (vmLookup.TryGetValue(def.Id, out var vm))
-                fieldVms.Add(vm);
-        }
-
-        // build children first with null parent (fixed up below)
-        var childNodes = new List<CategoryNodeViewModel>();
-        foreach (var childCategory in category.Children)
-        {
-            var childNode = BuildCategoryNode(childCategory, vmLookup, parent: null);
-            childNodes.Add(childNode);
-        }
-
-        // create node with actual children
-        var node = new CategoryNodeViewModel(
-            category.Key,
-            category.Label,
-            category.SortOrder,
-            fieldVms,
-            childNodes,
-            parent);
-
-        // fix up children's parent references to point to this node
-        foreach (var child in childNodes)
-            child.Parent = node;
-
-        return node;
+        _allCategoryNodes.AddRange(result.RootNodes);
     }
 
     private void PopulateSelectedCategoryContent()
