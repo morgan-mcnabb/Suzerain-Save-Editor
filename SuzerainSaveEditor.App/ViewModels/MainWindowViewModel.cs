@@ -26,8 +26,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly Dictionary<string, FieldViewModel> _fieldLookup = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _validationErrors = new(StringComparer.Ordinal);
     private readonly Dictionary<string, CategoryNodeViewModel> _categoryNodeLookup = new(StringComparer.Ordinal);
+    private readonly FieldFilterService _filterService = new();
     private bool _suppressCategoryChanged;
-    private Dictionary<string, bool>? _savedExpansionStates;
     private CancellationTokenSource? _searchDebounce;
     private const int SearchDebounceMs = 250;
 
@@ -350,7 +350,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _fieldLookup.Clear();
         _validationErrors.Clear();
         _categoryNodeLookup.Clear();
-        _savedExpansionStates = null;
+        _filterService.Reset();
 
         GeneralFields.Clear();
         SordlandFields.Clear();
@@ -381,7 +381,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _allCategoryNodes.Clear();
         _fieldLookup.Clear();
         _validationErrors.Clear();
-        _savedExpansionStates = null;
+        _filterService.Reset();
 
         var schema = _activeSchema ?? _schemaService;
 
@@ -574,84 +574,36 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     internal void ApplyFilter()
     {
-        ApplyFilterToGroup(_allGeneralFields, GeneralFields);
-        ApplyFilterToGroup(_allSordlandFields, SordlandFields);
-        ApplyFilterToGroup(_allRiziaFields, RiziaFields);
-        ApplyFilterToCategoryTree();
-    }
-
-    private void ApplyFilterToGroup(List<FieldViewModel> source, BatchObservableCollection<FieldViewModel> target)
-    {
         var query = SearchText?.Trim() ?? "";
 
-        if (string.IsNullOrEmpty(query))
-        {
-            target.ReplaceAll(source);
-            return;
-        }
+        GeneralFields.ReplaceAll(FieldFilterService.FilterGroup(query, _allGeneralFields));
+        SordlandFields.ReplaceAll(FieldFilterService.FilterGroup(query, _allSordlandFields));
+        RiziaFields.ReplaceAll(FieldFilterService.FilterGroup(query, _allRiziaFields));
 
-        var filtered = new List<FieldViewModel>();
-        foreach (var field in source)
-        {
-            if (field.Label.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                field.FieldId.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                (field.Description?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false))
-            {
-                filtered.Add(field);
-            }
-        }
-        target.ReplaceAll(filtered);
+        ApplyTreeFilterResult(
+            _filterService.FilterCategoryTree(query, _allCategoryNodes, _categoryNodeLookup));
     }
 
-    private void ApplyFilterToCategoryTree()
+    private void ApplyTreeFilterResult(FieldFilterService.TreeFilterResult result)
     {
-        var query = SearchText?.Trim() ?? "";
-        var isSearching = !string.IsNullOrEmpty(query);
-
-        // save expansion states when entering search mode
-        if (isSearching && _savedExpansionStates is null)
+        // apply expansion updates to nodes
+        if (result.ExpansionUpdates is not null)
         {
-            _savedExpansionStates = new Dictionary<string, bool>(StringComparer.Ordinal);
-            foreach (var (key, node) in _categoryNodeLookup)
-                _savedExpansionStates[key] = node.IsExpanded;
-        }
-
-        // capture selection before replacing — Reset triggers the TreeView
-        // two-way binding to write null back into SelectedCategory
-        var savedSelection = SelectedCategory;
-
-        var visible = new List<CategoryNodeViewModel>();
-        foreach (var node in _allCategoryNodes)
-        {
-            node.ApplyFilter(query);
-            if (node.IsVisible)
-                visible.Add(node);
-        }
-
-        if (isSearching)
-        {
-            // expand all visible nodes at every level so matching descendants are visible
-            foreach (var node in _categoryNodeLookup.Values)
-            {
-                if (node.IsVisible)
-                    node.IsExpanded = true;
-            }
-        }
-        else if (_savedExpansionStates is not null)
-        {
-            // restore pre-search expansion states
-            foreach (var (key, wasExpanded) in _savedExpansionStates)
+            foreach (var (key, expanded) in result.ExpansionUpdates)
             {
                 if (_categoryNodeLookup.TryGetValue(key, out var node))
-                    node.IsExpanded = wasExpanded;
+                    node.IsExpanded = expanded;
             }
-            _savedExpansionStates = null;
         }
+
+        // capture selection before replacing — ReplaceAll triggers the TreeView
+        // two-way binding to write null back into SelectedCategory
+        var savedSelection = SelectedCategory;
 
         _suppressCategoryChanged = true;
         try
         {
-            CategoryNodes.ReplaceAll(visible);
+            CategoryNodes.ReplaceAll(result.VisibleRootNodes);
 
             // restore or clear selection based on visibility
             if (savedSelection is not null && savedSelection.IsVisible)
