@@ -945,6 +945,58 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task AdvancedTab_ClearSearchRestoresCollapseState()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        Assert.All(vm.CategoryNodes, n => Assert.False(n.IsExpanded));
+
+        vm.SearchText = "Diplomacy";
+        vm.ApplyFilter();
+
+        vm.SearchText = "";
+        vm.ApplyFilter();
+
+        Assert.All(vm.CategoryNodes, n => Assert.False(n.IsExpanded));
+    }
+
+    [Fact]
+    public async Task AdvancedTab_ClearSearchPreservesManualExpansion()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var turns = vm.CategoryNodes.FirstOrDefault(n => n.Key == "Turns");
+        Assert.NotNull(turns);
+        turns.IsExpanded = true;
+
+        vm.SearchText = "Diplomacy";
+        vm.ApplyFilter();
+
+        vm.SearchText = "";
+        vm.ApplyFilter();
+
+        Assert.True(turns.IsExpanded);
+    }
+
+    [Fact]
+    public async Task AdvancedTab_SearchExpandsIntermediateParentNodes()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithParentNode());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var parent = vm.CategoryNodes.FirstOrDefault(n => n.IsParent);
+        Assert.NotNull(parent);
+        Assert.False(parent.IsExpanded);
+
+        vm.SearchText = "SubA";
+        vm.ApplyFilter();
+
+        Assert.True(parent.IsExpanded);
+    }
+
+    [Fact]
     public async Task AdvancedTab_CategoryNodeHeaderShowsCount()
     {
         var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());

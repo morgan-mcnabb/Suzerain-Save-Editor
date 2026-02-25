@@ -27,6 +27,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly Dictionary<string, string> _validationErrors = new(StringComparer.Ordinal);
     private readonly Dictionary<string, CategoryNodeViewModel> _categoryNodeLookup = new(StringComparer.Ordinal);
     private bool _suppressCategoryChanged;
+    private Dictionary<string, bool>? _savedExpansionStates;
     private CancellationTokenSource? _searchDebounce;
     private const int SearchDebounceMs = 250;
 
@@ -326,6 +327,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _allCategoryNodes.Clear();
         _fieldLookup.Clear();
         _validationErrors.Clear();
+        _savedExpansionStates = null;
 
         var schema = _activeSchema ?? _schemaService;
 
@@ -598,6 +600,14 @@ public partial class MainWindowViewModel : ViewModelBase
         var query = SearchText?.Trim() ?? "";
         var isSearching = !string.IsNullOrEmpty(query);
 
+        // save expansion states when entering search mode
+        if (isSearching && _savedExpansionStates is null)
+        {
+            _savedExpansionStates = new Dictionary<string, bool>(StringComparer.Ordinal);
+            foreach (var (key, node) in _categoryNodeLookup)
+                _savedExpansionStates[key] = node.IsExpanded;
+        }
+
         // capture selection before replacing — Reset triggers the TreeView
         // two-way binding to write null back into SelectedCategory
         var savedSelection = SelectedCategory;
@@ -607,11 +617,27 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             node.ApplyFilter(query);
             if (node.IsVisible)
-            {
-                if (isSearching)
-                    node.IsExpanded = true;
                 visible.Add(node);
+        }
+
+        if (isSearching)
+        {
+            // expand all visible nodes at every level so matching descendants are visible
+            foreach (var node in _categoryNodeLookup.Values)
+            {
+                if (node.IsVisible)
+                    node.IsExpanded = true;
             }
+        }
+        else if (_savedExpansionStates is not null)
+        {
+            // restore pre-search expansion states
+            foreach (var (key, wasExpanded) in _savedExpansionStates)
+            {
+                if (_categoryNodeLookup.TryGetValue(key, out var node))
+                    node.IsExpanded = wasExpanded;
+            }
+            _savedExpansionStates = null;
         }
 
         _suppressCategoryChanged = true;
