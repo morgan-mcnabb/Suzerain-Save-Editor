@@ -421,7 +421,7 @@ public sealed class FieldResolverTests
 
 
     [Fact]
-    public void ReadValue_BoolField_UnparseableValue_ThrowsFormatException()
+    public void ReadValue_BoolField_UnparseableValue_ReturnsRawValue()
     {
         var doc = new SaveDocument
         {
@@ -432,6 +432,8 @@ public sealed class FieldResolverTests
         };
         var field = MakeField("test", "entity:Test_Entity.IsActive", FieldSource.EntityUpdate, FieldType.Bool);
 
-        Assert.Throws<FormatException>(() => _resolver.ReadValue(doc, field));
+        var result = _resolver.ReadValue(doc, field);
+
+        Assert.Equal("maybe", result);
     }
 }

@@ -23,13 +23,10 @@ public sealed class FieldResolver : IFieldResolver
             _ => throw new ArgumentOutOfRangeException(nameof(field), $"Unknown field source: {field.Source}")
         };
 
-        // normalize bool values to consistent casing regardless of source
-        if (raw is not null && field.Type == FieldType.Bool)
-        {
-            if (bool.TryParse(raw, out var b))
-                return b.ToString();
-            throw new FormatException($"Field '{field.Id}' is typed as bool but contains unparseable value '{raw}'.");
-        }
+        // normalize bool values to consistent casing regardless of source;
+        // if the value is unparseable, return it as-is so the UI can display it
+        if (raw is not null && field.Type == FieldType.Bool && bool.TryParse(raw, out var b))
+            return b.ToString();
 
         return raw;
     }
