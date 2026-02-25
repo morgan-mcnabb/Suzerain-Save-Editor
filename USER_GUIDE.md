@@ -4,9 +4,29 @@
 
 Your Suzerain saves are located at:
 
+**Windows:**
+
     %LocalAppData%Low\Torpor Games\Suzerain\
 
-To get there: press `Win+R`, paste that path, and hit Enter. You'll see `.json` files. Those are your saves.
+To get there: press `Win+R`, paste that path, and hit Enter.
+
+**macOS:**
+
+    ~/Library/Application Support/Torpor Games/Suzerain/
+
+To get there: in Finder, press `Cmd+Shift+G` and paste that path.
+
+**Linux (native):**
+
+    ~/.config/unity3d/Torpor Games/Suzerain/
+
+**Linux (Steam/Proton):**
+
+    ~/.steam/steam/steamapps/compatdata/1207650/pfx/drive_c/users/steamuser/AppData/LocalLow/Torpor Games/Suzerain/
+
+In all cases, you'll see `.json` files. Those are your saves.
+
+> **Tip:** The editor will try to open the file picker directly in your save folder. If it doesn't find one automatically, navigate there manually.
 
 ### Step 2: Open a Save
 

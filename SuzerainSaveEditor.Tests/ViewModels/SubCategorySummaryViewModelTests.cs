@@ -158,6 +158,51 @@ public sealed class SubCategorySummaryViewModelTests
         Assert.Equal("1 modified", summary.DirtyText);
     }
 
+    // refresh dirty count
+
+    [Fact]
+    public void RefreshDirtyCount_UpdatesFromFieldState()
+    {
+        var fields = new List<FieldViewModel>
+        {
+            MakeFieldVm("f1", "Economy"),
+            MakeFieldVm("f2", "Military")
+        };
+        var node = MakeLeafNode(fields: fields);
+        var summary = new SubCategorySummaryViewModel(node);
+
+        Assert.Equal(0, summary.DirtyCount);
+        Assert.False(summary.HasDirtyFields);
+
+        fields[0].IsDirty = true;
+        summary.RefreshDirtyCount();
+
+        Assert.Equal(1, summary.DirtyCount);
+        Assert.True(summary.HasDirtyFields);
+        Assert.Equal("1 modified", summary.DirtyText);
+    }
+
+    [Fact]
+    public void RefreshDirtyCount_ClearedAfterRevert()
+    {
+        var fields = new List<FieldViewModel>
+        {
+            MakeFieldVm("f1", "Economy", isDirty: true),
+            MakeFieldVm("f2", "Military", isDirty: true)
+        };
+        var node = MakeLeafNode(fields: fields);
+        var summary = new SubCategorySummaryViewModel(node);
+
+        Assert.Equal(2, summary.DirtyCount);
+
+        fields[0].IsDirty = false;
+        fields[1].IsDirty = false;
+        summary.RefreshDirtyCount();
+
+        Assert.Equal(0, summary.DirtyCount);
+        Assert.False(summary.HasDirtyFields);
+    }
+
     // search query filtering
 
     [Fact]

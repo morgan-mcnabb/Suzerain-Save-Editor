@@ -4,10 +4,11 @@ using SuzerainSaveEditor.Core.Schema;
 namespace SuzerainSaveEditor.App.ViewModels;
 
 // represents a single editable field in the UI with type-specific bindings
-public partial class FieldViewModel : ViewModelBase
+public sealed partial class FieldViewModel : ViewModelBase
 {
-    private readonly Action<string, string>? _onValueChanged;
+    private Action<string, string>? _onValueChanged;
     private bool _suppressChanges;
+    private bool _suppressBoolNotify;
 
     public string FieldId { get; }
     public string Label { get; }
@@ -44,7 +45,17 @@ public partial class FieldViewModel : ViewModelBase
         {
             var str = value.ToString();
             if (Value != str)
-                Value = str;
+            {
+                _suppressBoolNotify = true;
+                try
+                {
+                    Value = str;
+                }
+                finally
+                {
+                    _suppressBoolNotify = false;
+                }
+            }
         }
     }
 
@@ -67,8 +78,21 @@ public partial class FieldViewModel : ViewModelBase
         FieldType = fieldType;
         Min = min;
         Max = max;
-        Options = options;
         _onValueChanged = onValueChanged;
+
+        // include unknown initial values in the options list so the ComboBox
+        // displays them instead of showing blank
+        if (fieldType == FieldType.Enum
+            && options is not null
+            && initialValue is not null
+            && !options.Contains(initialValue))
+        {
+            Options = [..options, initialValue];
+        }
+        else
+        {
+            Options = options;
+        }
 
         // set backing field directly to skip change notification during init
         _value = initialValue ?? "";
@@ -80,7 +104,7 @@ public partial class FieldViewModel : ViewModelBase
         if (_suppressChanges) return;
         _onValueChanged?.Invoke(FieldId, value);
 
-        if (IsBool)
+        if (IsBool && !_suppressBoolNotify)
             OnPropertyChanged(nameof(BoolValue));
     }
 
@@ -93,23 +117,38 @@ public partial class FieldViewModel : ViewModelBase
     public void UpdateFromSession(string? currentValue, bool isDirty, string? validationError)
     {
         _suppressChanges = true;
-        Value = currentValue ?? "";
-        IsDirty = isDirty;
-        ValidationError = validationError;
-        _suppressChanges = false;
+        try
+        {
+            Value = currentValue ?? "";
+            IsDirty = isDirty;
+            ValidationError = validationError;
+        }
+        finally
+        {
+            _suppressChanges = false;
+        }
 
         if (IsBool)
             OnPropertyChanged(nameof(BoolValue));
     }
 
+    // release the callback reference so the captured parent viewmodel can be GC'd
+    public void Detach() => _onValueChanged = null;
+
     // reset to original value without triggering the change callback
     public void ResetToOriginal()
     {
         _suppressChanges = true;
-        Value = OriginalValue ?? "";
-        IsDirty = false;
-        ValidationError = null;
-        _suppressChanges = false;
+        try
+        {
+            Value = OriginalValue ?? "";
+            IsDirty = false;
+            ValidationError = null;
+        }
+        finally
+        {
+            _suppressChanges = false;
+        }
 
         if (IsBool)
             OnPropertyChanged(nameof(BoolValue));

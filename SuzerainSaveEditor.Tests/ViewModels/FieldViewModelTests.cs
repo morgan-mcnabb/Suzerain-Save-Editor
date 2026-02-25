@@ -34,6 +34,38 @@ public sealed class FieldViewModelTests
         Assert.Null(vm.OriginalValue);
     }
 
+    [Fact]
+    public void Constructor_Enum_UnknownValue_AppendsToOptions()
+    {
+        var options = new List<string> { "A", "B", "C" };
+        var vm = new FieldViewModel("id", "Label", null,
+            FieldType.Enum, "D", options: options);
+
+        Assert.Equal("D", vm.Value);
+        Assert.Contains("D", vm.Options!);
+        Assert.Equal(4, vm.Options!.Count);
+    }
+
+    [Fact]
+    public void Constructor_Enum_KnownValue_OptionsUnchanged()
+    {
+        var options = new List<string> { "A", "B", "C" };
+        var vm = new FieldViewModel("id", "Label", null,
+            FieldType.Enum, "B", options: options);
+
+        Assert.Equal(options, vm.Options);
+    }
+
+    [Fact]
+    public void Constructor_Enum_NullValue_OptionsUnchanged()
+    {
+        var options = new List<string> { "A", "B" };
+        var vm = new FieldViewModel("id", "Label", null,
+            FieldType.Enum, null, options: options);
+
+        Assert.Equal(options, vm.Options);
+    }
+
     // type flag tests
     [Theory]
     [InlineData(FieldType.Bool, true, false, false, false)]
@@ -241,6 +273,43 @@ public sealed class FieldViewModelTests
 
         vm.Value = "True";
         Assert.True(raised);
+    }
+
+    [Fact]
+    public void BoolValue_Setter_DoesNotRaiseRedundantBoolValueNotification()
+    {
+        var vm = new FieldViewModel("id", "Label", null, FieldType.Bool, "False");
+        var count = 0;
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(FieldViewModel.BoolValue))
+                count++;
+        };
+
+        vm.BoolValue = true;
+
+        // when the change originates from BoolValue setter (i.e. the ToggleSwitch),
+        // no BoolValue notification should fire — the control already knows the value
+        Assert.Equal(0, count);
+        Assert.Equal("True", vm.Value);
+    }
+
+    [Fact]
+    public void DirectValueChange_OnBoolField_StillRaisesBoolValueNotification()
+    {
+        var vm = new FieldViewModel("id", "Label", null, FieldType.Bool, "False");
+        var count = 0;
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(FieldViewModel.BoolValue))
+                count++;
+        };
+
+        vm.Value = "True";
+
+        // when Value is set directly (not through BoolValue), the notification must fire
+        // so the ToggleSwitch picks up the change
+        Assert.Equal(1, count);
     }
 
     [Fact]

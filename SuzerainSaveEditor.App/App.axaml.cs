@@ -34,8 +34,10 @@ public partial class App : Application
             var fieldResolver = new FieldResolver();
             var discoveryService = new FieldDiscoveryService(schemaService);
 
+            var savePathProvider = new SavePathProvider();
+
             var mainWindow = new MainWindow();
-            var fileDialogService = new FileDialogService(mainWindow);
+            var fileDialogService = new FileDialogService(mainWindow, savePathProvider);
 
             mainWindow.DataContext = new MainWindowViewModel(
                 saveFileService,

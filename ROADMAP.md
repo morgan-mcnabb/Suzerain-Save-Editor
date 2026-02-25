@@ -3,11 +3,11 @@
 ## v1.1 — Cross-Platform
 
 
-- [ ] Linux support (x64)
-- [ ] macOS support (x64 + Apple Silicon)
-- [ ] Platform-aware save file detection (game stores saves in different locations per OS)
-- [ ] Platform-aware atomic writes 
-- [ ] Update user guide with Linux/macOS save paths
+- [x] Linux support (x64)
+- [x] macOS support (x64 + Apple Silicon)
+- [x] Platform-aware save file detection (game stores saves in different locations per OS)
+- [x] Platform-aware atomic writes
+- [x] Update user guide with Linux/macOS save paths
 
 ## v1.2 — Quality of Life
 

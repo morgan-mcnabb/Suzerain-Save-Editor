@@ -192,9 +192,11 @@
             <Setter Property="Background" Value="{DynamicResource StatusDirtyBg}" />
         </Style>
 
-        <!-- error field row gets a red-tinted background -->
+        <!-- error field row gets a red-tinted background and red left border -->
         <Style Selector="Border.field-row-error">
             <Setter Property="Background" Value="{DynamicResource StatusErrorBg}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource StatusError}" />
+            <Setter Property="BorderThickness" Value="3,0,0,1" />
         </Style>
 
         <!-- toolbar area -->

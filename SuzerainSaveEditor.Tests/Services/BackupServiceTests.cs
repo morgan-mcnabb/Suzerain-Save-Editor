@@ -66,8 +66,8 @@ public sealed class BackupServiceTests : IDisposable
         var backupPath = await _service.CreateBackupAsync(filePath);
 
         var backupFileName = Path.GetFileName(backupPath);
-        // pattern: mysave.json.bak.yyyyMMdd-HHmmss
-        Assert.Matches(@"^mysave\.json\.bak\.\d{8}-\d{6}$", backupFileName);
+        // pattern: mysave.json.bak.yyyyMMdd-HHmmssfff
+        Assert.Matches(@"^mysave\.json\.bak\.\d{8}-\d{9}$", backupFileName);
     }
 
     [Fact]
@@ -151,19 +151,45 @@ public sealed class BackupServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task CreateBackupAsync_SameSecondBackup_OverwritesInsteadOfThrowing()
+    public async Task CreateBackupAsync_RelativePath_BackupCreatedNextToFile()
+    {
+        var filePath = CreateTestFile();
+        var originalDir = Directory.GetCurrentDirectory();
+
+        try
+        {
+            Directory.SetCurrentDirectory(_tempDir);
+            var relativePath = Path.GetFileName(filePath);
+
+            var backupPath = await _service.CreateBackupAsync(relativePath);
+
+            var expectedDir = Path.Combine(_tempDir, "backups");
+            Assert.Equal(expectedDir, Path.GetDirectoryName(backupPath));
+            Assert.True(File.Exists(backupPath));
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(originalDir);
+        }
+    }
+
+    [Fact]
+    public async Task CreateBackupAsync_RapidBackups_CreatesSeparateFiles()
     {
         var filePath = CreateTestFile(content: "first version");
 
         var backupPath1 = await _service.CreateBackupAsync(filePath);
 
-        // update the file and backup again within the same second
+        // update the file and backup again rapidly
         await File.WriteAllTextAsync(filePath, "second version");
+        await Task.Delay(1); // ensure at least 1ms difference
         var backupPath2 = await _service.CreateBackupAsync(filePath);
 
-        // both calls should succeed and return the same path
-        Assert.Equal(backupPath1, backupPath2);
-        // the backup should contain the latest content
+        // millisecond granularity should produce different paths
+        Assert.NotEqual(backupPath1, backupPath2);
+        Assert.True(File.Exists(backupPath1));
+        Assert.True(File.Exists(backupPath2));
+        Assert.Equal("first version", await File.ReadAllTextAsync(backupPath1));
         Assert.Equal("second version", await File.ReadAllTextAsync(backupPath2));
     }
 }

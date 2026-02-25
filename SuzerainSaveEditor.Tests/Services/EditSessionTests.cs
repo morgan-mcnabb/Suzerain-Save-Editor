@@ -32,6 +32,48 @@ public sealed class EditSessionTests
         return new EditSession(doc ?? CreateTestDocument(), null, SchemaWithMinMax(), _resolver);
     }
 
+    private EditSession CreateSessionWithDecimalMinMax()
+    {
+        var field = new FieldDefinition
+        {
+            Id = "test.decimal",
+            Path = "variable:BaseGame.GovernmentBudget",
+            Label = "Test Decimal",
+            Group = FieldGroup.General,
+            Type = FieldType.Decimal,
+            Source = FieldSource.Variable,
+            Min = 0,
+            Max = 100
+        };
+        var schema = new MutableSchemaService(field);
+        return new EditSession(CreateTestDocument(), null, schema, _resolver);
+    }
+
+    private EditSession CreateSessionWithDecimalNum(string rawValue)
+    {
+        var field = new FieldDefinition
+        {
+            Id = "test.decimal",
+            Path = "variable:TestDecimal",
+            Label = "Test Decimal",
+            Group = FieldGroup.General,
+            Type = FieldType.Decimal,
+            Source = FieldSource.Variable
+        };
+        var doc = CreateTestDocument();
+        var vars = doc.Variables.ToList();
+        vars.Add(new LuaVariable("TestDecimal", new LuaValue.Num(rawValue)));
+        doc = new SaveDocument
+        {
+            Metadata = doc.Metadata,
+            WarSaveData = doc.WarSaveData,
+            Variables = vars,
+            EntityUpdates = doc.EntityUpdates
+        };
+        var schema = new MutableSchemaService(field);
+        return new EditSession(doc, null, schema, _resolver);
+    }
+
     // test helper that replaces a single field by id in the wrapped schema
     private sealed class OverridingSchemaService(ISchemaService inner, FieldDefinition overrideField) : ISchemaService
     {
@@ -130,10 +172,17 @@ public sealed class EditSessionTests
     }
 
     [Fact]
-    public void NewSession_CurrentDocument_IsSameAsOriginal()
+    public void NewSession_CurrentDocument_IsDistinctFromOriginal()
     {
         var session = CreateSession();
-        Assert.Same(session.OriginalDocument, session.CurrentDocument);
+        Assert.NotSame(session.OriginalDocument, session.CurrentDocument);
+    }
+
+    [Fact]
+    public void NewSession_WarSaveData_IsIsolatedBetweenDocuments()
+    {
+        var session = CreateSession();
+        Assert.NotSame(session.OriginalDocument.WarSaveData, session.CurrentDocument.WarSaveData);
     }
 
     [Fact]
@@ -248,10 +297,10 @@ public sealed class EditSessionTests
         session.SetValue("sordland.governmentBudget", "8");
 
         var dirty = session.GetDirtyFields();
-        Assert.Single(dirty);
-        Assert.Equal("sordland.governmentBudget", dirty[0].FieldId);
-        Assert.Equal("4", dirty[0].OldValue);
-        Assert.Equal("8", dirty[0].NewValue);
+        var edit = Assert.Single(dirty);
+        Assert.Equal("sordland.governmentBudget", edit.FieldId);
+        Assert.Equal("4", edit.OldValue);
+        Assert.Equal("8", edit.NewValue);
     }
 
     [Fact]
@@ -306,8 +355,8 @@ public sealed class EditSessionTests
 
         Assert.Equal("6", session.GetValue("sordland.governmentBudget"));
         var dirty = session.GetDirtyFields();
-        Assert.Single(dirty);
-        Assert.Equal("6", dirty[0].NewValue);
+        var edit = Assert.Single(dirty);
+        Assert.Equal("6", edit.NewValue);
     }
 
     [Fact]
@@ -373,6 +422,83 @@ public sealed class EditSessionTests
     {
         var session = CreateSessionWithMinMax();
         var result = session.SetValue("sordland.governmentBudget", "10");
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void ValidateField_Decimal_BelowMin_ReturnsError()
+    {
+        var session = CreateSessionWithDecimalMinMax();
+        var result = session.ValidateField("test.decimal", "-1.5");
+
+        Assert.False(result.IsValid);
+        Assert.Contains("below minimum", result.Error);
+    }
+
+    [Fact]
+    public void ValidateField_Decimal_AboveMax_ReturnsError()
+    {
+        var session = CreateSessionWithDecimalMinMax();
+        var result = session.ValidateField("test.decimal", "100.5");
+
+        Assert.False(result.IsValid);
+        Assert.Contains("exceeds maximum", result.Error);
+    }
+
+    [Fact]
+    public void ValidateField_Decimal_AtMin_Succeeds()
+    {
+        var session = CreateSessionWithDecimalMinMax();
+        var result = session.ValidateField("test.decimal", "0");
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void ValidateField_Decimal_AtMax_Succeeds()
+    {
+        var session = CreateSessionWithDecimalMinMax();
+        var result = session.ValidateField("test.decimal", "100");
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void ValidateField_Decimal_WithinRange_Succeeds()
+    {
+        var session = CreateSessionWithDecimalMinMax();
+        var result = session.ValidateField("test.decimal", "50.5");
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void ValidateField_Decimal_InvalidString_ReturnsError()
+    {
+        var session = CreateSessionWithDecimalMinMax();
+        var result = session.ValidateField("test.decimal", "abc");
+
+        Assert.False(result.IsValid);
+        Assert.Contains("not a valid number", result.Error);
+    }
+
+    [Fact]
+    public void ValidateField_Decimal_NoMinMax_AcceptsAnyValidNumber()
+    {
+        var field = new FieldDefinition
+        {
+            Id = "test.unbounded",
+            Path = "variable:BaseGame.GovernmentBudget",
+            Label = "Unbounded Decimal",
+            Group = FieldGroup.General,
+            Type = FieldType.Decimal,
+            Source = FieldSource.Variable
+        };
+        var schema = new MutableSchemaService(field);
+        var session = new EditSession(CreateTestDocument(), null, schema, _resolver);
+
+        var result = session.ValidateField("test.unbounded", "999999.99");
 
         Assert.True(result.IsValid);
     }
@@ -494,14 +620,29 @@ public sealed class EditSessionTests
     }
 
     [Fact]
-    public void RevertAll_RestoresCurrentDocumentToOriginal()
+    public void RevertAll_CurrentDocumentIsDistinctInstance()
     {
         var session = CreateSession();
         session.SetValue("sordland.governmentBudget", "8");
 
         session.RevertAll();
 
-        Assert.Same(session.OriginalDocument, session.CurrentDocument);
+        Assert.NotSame(session.OriginalDocument, session.CurrentDocument);
+        Assert.NotSame(session.OriginalDocument.WarSaveData, session.CurrentDocument.WarSaveData);
+    }
+
+    [Fact]
+    public void RevertAll_EditAfterRevert_DoesNotCorruptOriginalDocument()
+    {
+        var session = CreateSession();
+        session.SetValue("sordland.governmentBudget", "8");
+        session.RevertAll();
+
+        session.SetValue("sordland.governmentBudget", "99");
+
+        var field = _schema.GetById("sordland.governmentBudget")!;
+        Assert.Equal("4", _resolver.ReadValue(session.OriginalDocument, field));
+        Assert.Equal("99", session.GetValue("sordland.governmentBudget"));
     }
 
     // --- int with no min/max ---
@@ -552,6 +693,107 @@ public sealed class EditSessionTests
         Assert.False(session.IsDirty);
     }
 
+    [Fact]
+    public void SetValue_DecimalScientificNotationSameAsOriginal_NotDirty()
+    {
+        var session = CreateSessionWithDecimalNum("4E+00");
+        // original is "4E+00", typing "4" is numerically equal
+        var result = session.SetValue("test.decimal", "4");
+
+        Assert.True(result.IsValid);
+        Assert.False(session.IsDirty);
+    }
+
+    [Fact]
+    public void SetValue_DecimalDifferentFormatSameAsOriginal_NotDirty()
+    {
+        var session = CreateSessionWithDecimalNum("1.0");
+        // original is "1.0", typing "1" is numerically equal
+        var result = session.SetValue("test.decimal", "1");
+
+        Assert.True(result.IsValid);
+        Assert.False(session.IsDirty);
+    }
+
+    [Fact]
+    public void SetValue_DecimalDifferentValue_IsDirty()
+    {
+        var session = CreateSessionWithDecimalNum("4E+00");
+        var result = session.SetValue("test.decimal", "5");
+
+        Assert.True(result.IsValid);
+        Assert.True(session.IsDirty);
+    }
+
+    [Fact]
+    public void IsFieldDirty_UneditedField_ReturnsFalse()
+    {
+        var session = CreateSession();
+        Assert.False(session.IsFieldDirty("sordland.governmentBudget"));
+    }
+
+    [Fact]
+    public void IsFieldDirty_EditedField_ReturnsTrue()
+    {
+        var session = CreateSession();
+        session.SetValue("sordland.governmentBudget", "8");
+        Assert.True(session.IsFieldDirty("sordland.governmentBudget"));
+    }
+
+    [Fact]
+    public void IsFieldDirty_RevertedField_ReturnsFalse()
+    {
+        var session = CreateSession();
+        session.SetValue("sordland.governmentBudget", "8");
+        session.RevertField("sordland.governmentBudget");
+        Assert.False(session.IsFieldDirty("sordland.governmentBudget"));
+    }
+
+    [Fact]
+    public void IsFieldDirty_SetBackToOriginal_ReturnsFalse()
+    {
+        var session = CreateSession();
+        session.SetValue("sordland.governmentBudget", "8");
+        session.SetValue("sordland.governmentBudget", "4");
+        Assert.False(session.IsFieldDirty("sordland.governmentBudget"));
+    }
+
+    // --- DirtyCount ---
+
+    [Fact]
+    public void DirtyCount_NoEdits_ReturnsZero()
+    {
+        var session = CreateSession();
+        Assert.Equal(0, session.DirtyCount);
+    }
+
+    [Fact]
+    public void DirtyCount_OneEdit_ReturnsOne()
+    {
+        var session = CreateSession();
+        session.SetValue("sordland.governmentBudget", "8");
+        Assert.Equal(1, session.DirtyCount);
+    }
+
+    [Fact]
+    public void DirtyCount_MultipleEdits_ReturnsCount()
+    {
+        var session = CreateSession();
+        session.SetValue("sordland.governmentBudget", "8");
+        session.SetValue("sordland.economyTaxation", "5");
+        Assert.Equal(2, session.DirtyCount);
+    }
+
+    [Fact]
+    public void DirtyCount_AfterRevertAll_ReturnsZero()
+    {
+        var session = CreateSession();
+        session.SetValue("sordland.governmentBudget", "8");
+        session.SetValue("sordland.economyTaxation", "5");
+        session.RevertAll();
+        Assert.Equal(0, session.DirtyCount);
+    }
+
     // --- string accepts anything ---
 
     [Fact]
@@ -561,5 +803,291 @@ public sealed class EditSessionTests
         var result = session.SetValue("meta.notes", "");
 
         Assert.True(result.IsValid);
+    }
+
+
+    [Fact]
+    public void ValidateAll_OrphanedEdit_ReturnsError()
+    {
+        // use a mutable schema that can "forget" a field after an edit
+        var fieldDef = new FieldDefinition
+        {
+            Id = "temp.budget",
+            Path = "variable:BaseGame.GovernmentBudget",
+            Label = "Budget",
+            Group = FieldGroup.General,
+            Type = FieldType.Int,
+            Source = FieldSource.Variable
+        };
+        var mutableSchema = new MutableSchemaService(fieldDef);
+        var session = new EditSession(CreateTestDocument(), null, mutableSchema, _resolver);
+
+        // make an edit while the field exists
+        var result = session.SetValue("temp.budget", "8");
+        Assert.True(result.IsValid);
+        Assert.True(session.IsDirty);
+
+        // remove the field from the schema (simulating schema change)
+        mutableSchema.RemoveField("temp.budget");
+
+        // ValidateAll should now report the orphaned edit
+        var validation = session.ValidateAll();
+        Assert.False(validation.IsValid);
+        Assert.Contains("unknown field", validation.Error);
+    }
+
+    [Fact]
+    public void Constructor_DefensiveCopy_ExternalMutationDoesNotCorruptOriginal()
+    {
+        var variables = new List<LuaVariable>
+        {
+            new("BaseGameSetup.CurrentTurn", new LuaValue.Int(5)),
+            new("BaseGame.GovernmentBudget", new LuaValue.Int(4)),
+            new("BaseGame.Economy_Taxation", new LuaValue.Int(2)),
+            new("BaseGame.Economy_EconomicState", new LuaValue.Int(3)),
+            new("BaseGame.ConstitutionReform", new LuaValue.Bool(true)),
+            new("BaseGame.Impeached", new LuaValue.Bool(false)),
+            new("BaseGameText.AlphonsoToPlayer", new LuaValue.Str("Mr. President")),
+            new("BaseGame.Opinion_OldGuard", new LuaValue.Int(5)),
+            new("BaseGame.Opinion_Reformist", new LuaValue.Int(3)),
+            new("BaseGame.Opinion_NFP", new LuaValue.Int(2)),
+            new("BaseGame.Opinion_Bluds", new LuaValue.Int(1)),
+            new("BaseGame.Opinion_Military", new LuaValue.Int(4)),
+            new("BaseGame.Opinion_Oligarchs", new LuaValue.Int(3)),
+            new("BaseGame.Relations_Rumburg", new LuaValue.Int(-2)),
+            new("BaseGame.Relations_Lespia", new LuaValue.Int(3)),
+            new("BaseGame.Relations_Agnolia", new LuaValue.Int(1)),
+            new("BaseGame.Relations_Wehlen", new LuaValue.Int(2)),
+            new("BaseGame.Relations_Contana", new LuaValue.Int(0)),
+            new("BaseGame.Relations_Valgsland", new LuaValue.Int(1)),
+            new("BaseGame.Economy_OilPrice", new LuaValue.Int(50)),
+            new("BaseGame.Economy_Healthcare_Spending", new LuaValue.Int(3)),
+            new("BaseGame.Economy_Education_Spending", new LuaValue.Int(2)),
+            new("BaseGame.Economy_LawEnforcement_Spending", new LuaValue.Int(1)),
+            new("BaseGame.Economy_Social_Spending", new LuaValue.Int(2)),
+            new("BaseGame.Economy_Infrastructure_Spending", new LuaValue.Int(1)),
+            new("RiziaDLCSetup.CurrentTurn", new LuaValue.Int(3)),
+            new("RiziaDLC.GovernmentBudget", new LuaValue.Int(7)),
+            new("RiziaDLC.RoyalTreasury", new LuaValue.Int(5)),
+            new("RiziaDLC.Opinion_Nobles", new LuaValue.Int(4)),
+            new("RiziaDLC.Opinion_Merchants", new LuaValue.Int(3)),
+            new("RiziaDLC.Opinion_Peasants", new LuaValue.Int(2)),
+            new("RiziaDLC.Opinion_Clergy", new LuaValue.Int(3)),
+            new("RiziaDLC.Opinion_Military", new LuaValue.Int(4)),
+            new("RiziaDLC.Relations_Wehlen", new LuaValue.Int(2)),
+            new("RiziaDLC.Relations_Lespia", new LuaValue.Int(1)),
+            new("RiziaDLC.Relations_Rumburg", new LuaValue.Int(-1)),
+            new("RiziaDLCText.KingsSon", new LuaValue.Str("Aldric")),
+            new("RiziaDLCText.FinalChapterTitle", new LuaValue.Str("Dawn")),
+        };
+        var originalCount = variables.Count;
+
+        var doc = new SaveDocument
+        {
+            Metadata = new SaveMetadata(3, "KING", "StoryPack_Rizia", 11, "King1",
+                2, "20-07-2025_21-10-39", "3.1.0.1.137", false, false, "test notes"),
+            WarSaveData = new JsonObject(),
+            Variables = variables,
+            EntityUpdates = CreateTestDocument().EntityUpdates
+        };
+
+        var session = new EditSession(doc, null, _schema, _resolver);
+
+        // mutate the original list after session construction
+        variables.Clear();
+
+        // session's OriginalDocument should be unaffected
+        Assert.Equal(originalCount, session.OriginalDocument.Variables.Count);
+        Assert.Equal("4", session.GetValue("sordland.governmentBudget"));
+    }
+
+    private EditSession CreateSessionWithMismatchedType(FieldType schemaType, LuaValue actualValue)
+    {
+        var field = new FieldDefinition
+        {
+            Id = "test.mismatched",
+            Path = "variable:TestMismatched",
+            Label = "Mismatched Field",
+            Group = FieldGroup.General,
+            Type = schemaType,
+            Source = FieldSource.Variable
+        };
+        var doc = CreateTestDocument();
+        var vars = doc.Variables.ToList();
+        vars.Add(new LuaVariable("TestMismatched", actualValue));
+        doc = new SaveDocument
+        {
+            Metadata = doc.Metadata,
+            WarSaveData = doc.WarSaveData,
+            Variables = vars,
+            EntityUpdates = doc.EntityUpdates
+        };
+        var schema = new MutableSchemaService(field);
+        return new EditSession(doc, null, schema, _resolver);
+    }
+
+    [Fact]
+    public void SetValue_BoolField_MalformedOriginal_DoesNotThrow()
+    {
+        var session = CreateSessionWithMismatchedType(FieldType.Bool, new LuaValue.Str("garbage"));
+        var result = session.SetValue("test.mismatched", "True");
+
+        Assert.True(result.IsValid);
+        Assert.True(session.IsDirty);
+    }
+
+    [Fact]
+    public void SetValue_IntField_MalformedOriginal_DoesNotThrow()
+    {
+        var session = CreateSessionWithMismatchedType(FieldType.Int, new LuaValue.Str("not_a_number"));
+        var result = session.SetValue("test.mismatched", "42");
+
+        Assert.True(result.IsValid);
+        Assert.True(session.IsDirty);
+    }
+
+    [Fact]
+    public void SetValue_DecimalField_MalformedOriginal_DoesNotThrow()
+    {
+        var session = CreateSessionWithMismatchedType(FieldType.Decimal, new LuaValue.Str("not_a_number"));
+        var result = session.SetValue("test.mismatched", "3.14");
+
+        Assert.True(result.IsValid);
+        Assert.True(session.IsDirty);
+    }
+
+    [Fact]
+    public void GetDirtyFields_ReturnsSnapshot_NotLiveView()
+    {
+        var session = CreateSession();
+        session.SetValue("sordland.governmentBudget", "8");
+
+        var snapshot = session.GetDirtyFields();
+        Assert.Single(snapshot);
+
+        // further edit should not affect the previously returned snapshot
+        session.SetValue("sordland.economyTaxation", "5");
+
+        Assert.Single(snapshot);
+    }
+
+    [Fact]
+    public async Task ConcurrentSetValue_DoesNotCorruptState()
+    {
+        var session = CreateSession();
+        var fieldIds = new[]
+        {
+            "sordland.opinionOldGuard",
+            "sordland.opinionReformist",
+            "sordland.opinionNationalist",
+            "sordland.opinionBluds",
+            "sordland.opinionMilitary",
+            "sordland.opinionOligarchs",
+        };
+
+        var barrier = new Barrier(fieldIds.Length);
+        var tasks = fieldIds.Select(id => Task.Run(() =>
+        {
+            barrier.SignalAndWait();
+            for (var i = 0; i < 100; i++)
+                session.SetValue(id, (i + 1).ToString());
+        })).ToArray();
+
+        await Task.WhenAll(tasks);
+
+        // all fields should have their final value and be marked dirty
+        foreach (var id in fieldIds)
+        {
+            Assert.Equal("100", session.GetValue(id));
+            Assert.True(session.IsFieldDirty(id));
+        }
+        Assert.Equal(fieldIds.Length, session.DirtyCount);
+    }
+
+    [Fact]
+    public async Task ConcurrentSetValueAndRevertAll_DoesNotThrow()
+    {
+        var session = CreateSession();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+
+        var writer = Task.Run(() =>
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                session.SetValue("sordland.governmentBudget", "8");
+                session.SetValue("sordland.economyTaxation", "5");
+            }
+        });
+
+        var reverter = Task.Run(() =>
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                session.RevertAll();
+            }
+        });
+
+        var reader = Task.Run(() =>
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                _ = session.IsDirty;
+                _ = session.DirtyCount;
+                _ = session.GetDirtyFields();
+            }
+        });
+
+        await Task.WhenAll(writer, reverter, reader);
+        // no exceptions thrown — state may vary but access is safe
+    }
+
+    [Fact]
+    public async Task ConcurrentGetDirtyFields_DoesNotThrow()
+    {
+        var session = CreateSession();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+
+        var writer = Task.Run(() =>
+        {
+            var toggle = true;
+            while (!cts.IsCancellationRequested)
+            {
+                session.SetValue("sordland.governmentBudget", toggle ? "8" : "4");
+                toggle = !toggle;
+            }
+        });
+
+        var reader = Task.Run(() =>
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                var dirty = session.GetDirtyFields();
+                // iterating the snapshot should never throw
+                foreach (var _ in dirty) { }
+            }
+        });
+
+        await Task.WhenAll(writer, reader);
+    }
+
+    private sealed class MutableSchemaService : ISchemaService
+    {
+        private readonly Dictionary<string, FieldDefinition> _fields = new();
+
+        public MutableSchemaService(params FieldDefinition[] fields)
+        {
+            foreach (var f in fields)
+                _fields[f.Id] = f;
+        }
+
+        public void RemoveField(string id) => _fields.Remove(id);
+
+        public IReadOnlyList<FieldDefinition> GetAll() => _fields.Values.ToList();
+        public IReadOnlyList<FieldDefinition> GetByGroup(FieldGroup group) =>
+            _fields.Values.Where(f => f.Group == group).ToList();
+        public FieldDefinition? GetById(string id) =>
+            _fields.GetValueOrDefault(id);
+        public IReadOnlyList<FieldDefinition> Search(string query) =>
+            _fields.Values.Where(f => f.Label.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 }

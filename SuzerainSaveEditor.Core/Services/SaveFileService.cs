@@ -1,3 +1,4 @@
+using System.Text;
 using SuzerainSaveEditor.Core.Models;
 using SuzerainSaveEditor.Core.Parsing;
 
@@ -45,18 +46,64 @@ public sealed class SaveFileService : ISaveFileService
         var tempPath = filePath + ".tmp";
         try
         {
-            await File.WriteAllTextAsync(tempPath, text);
+            await using (var fs = new FileStream(tempPath, FileMode.Create, FileAccess.Write,
+                FileShare.None, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan))
+            await using (var writer = new StreamWriter(fs, new UTF8Encoding(false)))
+            {
+                await writer.WriteAsync(text);
+                await writer.FlushAsync();
+                await fs.FlushAsync();
+            }
 
-            if (File.Exists(filePath))
-                File.Replace(tempPath, filePath, null);
-            else
-                File.Move(tempPath, filePath);
+            ReplaceOriginal(tempPath, filePath);
         }
-        catch
+        catch (Exception ex)
         {
-            // clean up orphaned temp file on failure
-            try { File.Delete(tempPath); } catch { /* best effort */ }
+            // clean up orphaned temp file on failure, surfacing cleanup errors
+            // instead of silently swallowing them
+            if (!TryDeleteTempFile(tempPath, out var cleanupEx))
+                throw new IOException(
+                    $"Save failed and temp-file cleanup also failed. " +
+                    $"Orphaned file may remain at: {tempPath}",
+                    new AggregateException(ex, cleanupEx!));
             throw;
+        }
+    }
+
+    // replaces the original file atomically, handling the TOCTOU race where the
+    // original may be deleted between the Exists check and the Replace call
+    private static void ReplaceOriginal(string tempPath, string filePath)
+    {
+        if (!File.Exists(filePath))
+        {
+            File.Move(tempPath, filePath);
+            return;
+        }
+
+        try
+        {
+            File.Replace(tempPath, filePath, null);
+        }
+        catch (FileNotFoundException)
+        {
+            // original was deleted between Exists check and Replace call
+            File.Move(tempPath, filePath);
+        }
+    }
+
+    private static bool TryDeleteTempFile(string tempPath, out Exception? exception)
+    {
+        try
+        {
+            if (File.Exists(tempPath))
+                File.Delete(tempPath);
+            exception = null;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            exception = ex;
+            return false;
         }
     }
 }

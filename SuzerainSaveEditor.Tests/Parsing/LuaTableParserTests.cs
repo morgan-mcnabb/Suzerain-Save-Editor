@@ -271,4 +271,185 @@ public sealed class LuaTableParserTests
         Assert.IsType<LuaValue.Num>(result[1].Value);
         Assert.IsType<LuaValue.Int>(result[2].Value);
     }
+
+
+    [Fact]
+    public void Parse_StringWithEscapedQuote_ParsesCorrectly()
+    {
+        var input = "Variable={[\"msg\"]=\"say \\\"hello\\\"\"}; ";
+        var result = LuaTableParser.Parse(input);
+
+        Assert.Single(result);
+        Assert.Equal(new LuaValue.Str("say \"hello\""), result[0].Value);
+    }
+
+    [Fact]
+    public void Parse_StringWithEscapedBackslash_ParsesCorrectly()
+    {
+        var input = "Variable={[\"path\"]=\"a\\\\b\"}; ";
+        var result = LuaTableParser.Parse(input);
+
+        Assert.Single(result);
+        Assert.Equal(new LuaValue.Str("a\\b"), result[0].Value);
+    }
+
+    [Fact]
+    public void Parse_StringWithEscapedCarriageReturn_ParsesCorrectly()
+    {
+        var input = "Variable={[\"msg\"]=\"line1\\rline2\"}; ";
+        var result = LuaTableParser.Parse(input);
+
+        Assert.Single(result);
+        Assert.Equal(new LuaValue.Str("line1\rline2"), result[0].Value);
+    }
+
+    [Fact]
+    public void Parse_StringWithEscapedTab_ParsesCorrectly()
+    {
+        var input = "Variable={[\"msg\"]=\"col1\\tcol2\"}; ";
+        var result = LuaTableParser.Parse(input);
+
+        Assert.Single(result);
+        Assert.Equal(new LuaValue.Str("col1\tcol2"), result[0].Value);
+    }
+
+    [Fact]
+    public void Parse_StringWithEscapedNull_ParsesCorrectly()
+    {
+        var input = "Variable={[\"msg\"]=\"before\\0after\"}; ";
+        var result = LuaTableParser.Parse(input);
+
+        Assert.Single(result);
+        Assert.Equal(new LuaValue.Str("before\0after"), result[0].Value);
+    }
+
+    [Fact]
+    public void RoundTrip_StringWithCarriageReturn_PreservesValue()
+    {
+        var original = new List<LuaVariable>
+        {
+            new("msg", new LuaValue.Str("line1\rline2"))
+        };
+        var serialized = LuaTableSerializer.Serialize(original);
+        var parsed = LuaTableParser.Parse(serialized);
+
+        Assert.Single(parsed);
+        Assert.Equal("line1\rline2", ((LuaValue.Str)parsed[0].Value).Value);
+    }
+
+    [Fact]
+    public void RoundTrip_StringWithQuotes_PreservesValue()
+    {
+        var original = new List<LuaVariable>
+        {
+            new("msg", new LuaValue.Str("say \"hello\""))
+        };
+        var serialized = LuaTableSerializer.Serialize(original);
+        var parsed = LuaTableParser.Parse(serialized);
+
+        Assert.Single(parsed);
+        Assert.Equal("say \"hello\"", ((LuaValue.Str)parsed[0].Value).Value);
+    }
+
+    // --- decimal numbers (bug 6) ---
+
+    [Fact]
+    public void Parse_DecimalNumber_ReturnsNumValue()
+    {
+        var result = LuaTableParser.Parse("Variable={[\"pi\"]=3.14}; ");
+
+        Assert.Single(result);
+        var num = Assert.IsType<LuaValue.Num>(result[0].Value);
+        Assert.Equal("3.14", num.Raw);
+        Assert.Equal(3.14, num.NumericValue, 6);
+    }
+
+    [Fact]
+    public void Parse_NegativeDecimal_ReturnsNumValue()
+    {
+        var result = LuaTableParser.Parse("Variable={[\"neg\"]=-0.5}; ");
+
+        Assert.Single(result);
+        var num = Assert.IsType<LuaValue.Num>(result[0].Value);
+        Assert.Equal("-0.5", num.Raw);
+    }
+
+    [Fact]
+    public void Parse_DecimalWithScientificNotation_ReturnsNumValue()
+    {
+        var result = LuaTableParser.Parse("Variable={[\"x\"]=1.5e2}; ");
+
+        Assert.Single(result);
+        var num = Assert.IsType<LuaValue.Num>(result[0].Value);
+        Assert.Equal("1.5e2", num.Raw);
+        Assert.Equal(150.0, num.NumericValue, 6);
+    }
+
+
+    [Fact]
+    public void Parse_IntegerAboveMaxValue_ReturnsNumValue()
+    {
+        var result = LuaTableParser.Parse("Variable={[\"big\"]=3000000000}; ");
+
+        Assert.Single(result);
+        var num = Assert.IsType<LuaValue.Num>(result[0].Value);
+        Assert.Equal("3000000000", num.Raw);
+        Assert.Equal(3_000_000_000.0, num.NumericValue);
+    }
+
+    [Fact]
+    public void Parse_NegativeIntegerBelowMinValue_ReturnsNumValue()
+    {
+        var result = LuaTableParser.Parse("Variable={[\"neg\"]=-3000000000}; ");
+
+        Assert.Single(result);
+        var num = Assert.IsType<LuaValue.Num>(result[0].Value);
+        Assert.Equal("-3000000000", num.Raw);
+        Assert.Equal(-3_000_000_000.0, num.NumericValue);
+    }
+
+    [Fact]
+    public void RoundTrip_LargeInteger_PreservesRawValue()
+    {
+        var input = "Variable={[\"big\"]=3000000000}; ";
+        var parsed = LuaTableParser.Parse(input);
+        var serialized = LuaTableSerializer.Serialize(parsed);
+
+        Assert.Equal(input, serialized);
+    }
+
+    [Fact]
+    public void Parse_KeyEndAtVeryEndOfBody_ParsesCorrectly()
+    {
+        // the "]=true sequence ends at the very last positions of the body
+        var result = LuaTableParser.Parse("Variable={[\"k\"]=true}; ");
+
+        Assert.Single(result);
+        Assert.Equal("k", result[0].Key);
+    }
+
+
+    [Fact]
+    public void Parse_LoneMinus_ThrowsFormatException()
+    {
+        Assert.Throws<FormatException>(() => LuaTableParser.Parse("Variable={[\"x\"]=-}; "));
+    }
+
+    [Fact]
+    public void Parse_ScientificNotation_NoExponentDigits_ThrowsFormatException()
+    {
+        Assert.Throws<FormatException>(() => LuaTableParser.Parse("Variable={[\"x\"]=123E}; "));
+    }
+
+    [Fact]
+    public void Parse_ScientificNotation_SignButNoExponentDigits_ThrowsFormatException()
+    {
+        Assert.Throws<FormatException>(() => LuaTableParser.Parse("Variable={[\"x\"]=123E+}; "));
+    }
+
+    [Fact]
+    public void Parse_ScientificNotation_LowercaseNoDigits_ThrowsFormatException()
+    {
+        Assert.Throws<FormatException>(() => LuaTableParser.Parse("Variable={[\"x\"]=5e}; "));
+    }
 }

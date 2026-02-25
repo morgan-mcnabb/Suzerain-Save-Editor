@@ -5,8 +5,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationIcon>Assets\app-icon.ico</ApplicationIcon>
+    <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
+    <ApplicationIcon Condition="$([MSBuild]::IsOSPlatform('Windows'))">Assets\app-icon.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <Version>1.0.0</Version>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
@@ -17,6 +17,10 @@
     <Copyright>Copyright (c) 2025 Morgan McNabb</Copyright>
     <RepositoryUrl>https://github.com/morgan-mcnabb/Suzerain-Save-Editor</RepositoryUrl>
   </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SuzerainSaveEditor.Tests" />
+  </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Models\" />

@@ -121,4 +121,61 @@ public sealed class LuaValueTests
         var b = new LuaValue.Num("-1E+09");
         Assert.Equal(a, b);
     }
+
+
+    [Fact]
+    public void Str_WithQuotes_ToLuaString_EscapesQuotes()
+    {
+        var value = new LuaValue.Str("say \"hello\"");
+        Assert.Equal("\"say \\\"hello\\\"\"", value.ToLuaString());
+    }
+
+    [Fact]
+    public void Str_WithBackslash_ToLuaString_EscapesBackslash()
+    {
+        var value = new LuaValue.Str("path\\to\\file");
+        Assert.Equal("\"path\\\\to\\\\file\"", value.ToLuaString());
+    }
+
+    [Fact]
+    public void Str_WithBackslashAndQuote_ToLuaString_EscapesBoth()
+    {
+        var value = new LuaValue.Str("a\\\"b");
+        Assert.Equal("\"a\\\\\\\"b\"", value.ToLuaString());
+    }
+
+    [Fact]
+    public void Str_WithNewline_ToLuaString_EscapesNewline()
+    {
+        var value = new LuaValue.Str("line1\nline2");
+        Assert.Equal("\"line1\\nline2\"", value.ToLuaString());
+    }
+
+    [Fact]
+    public void Str_WithCarriageReturn_ToLuaString_EscapesCarriageReturn()
+    {
+        var value = new LuaValue.Str("line1\rline2");
+        Assert.Equal("\"line1\\rline2\"", value.ToLuaString());
+    }
+
+    [Fact]
+    public void Str_WithTab_ToLuaString_EscapesTab()
+    {
+        var value = new LuaValue.Str("col1\tcol2");
+        Assert.Equal("\"col1\\tcol2\"", value.ToLuaString());
+    }
+
+    [Fact]
+    public void Str_WithNull_ToLuaString_EscapesNull()
+    {
+        var value = new LuaValue.Str("before\0after");
+        Assert.Equal("\"before\\0after\"", value.ToLuaString());
+    }
+
+    [Fact]
+    public void Str_WithAllEscapes_ToLuaString_EscapesAll()
+    {
+        var value = new LuaValue.Str("a\\b\"c\nd\re\tf\0g");
+        Assert.Equal("\"a\\\\b\\\"c\\nd\\re\\tf\\0g\"", value.ToLuaString());
+    }
 }

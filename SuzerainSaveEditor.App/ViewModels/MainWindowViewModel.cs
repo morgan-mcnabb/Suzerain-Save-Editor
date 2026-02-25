@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SuzerainSaveEditor.App.Services;
@@ -7,7 +6,7 @@ using SuzerainSaveEditor.Core.Services;
 
 namespace SuzerainSaveEditor.App.ViewModels;
 
-public partial class MainWindowViewModel : ViewModelBase
+public sealed partial class MainWindowViewModel : ViewModelBase
 {
     private readonly ISaveFileService _saveFileService;
     private readonly ISchemaService _schemaService;
@@ -24,17 +23,24 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly List<FieldViewModel> _allRiziaFields = [];
     private readonly List<FieldViewModel> _allAdvancedFields = [];
     private readonly List<CategoryNodeViewModel> _allCategoryNodes = [];
+    private readonly Dictionary<string, FieldViewModel> _fieldLookup = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _validationErrors = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, CategoryNodeViewModel> _categoryNodeLookup = new(StringComparer.Ordinal);
+    private readonly FieldFilterService _filterService = new();
+    private bool _suppressCategoryChanged;
+    private CancellationTokenSource? _searchDebounce;
+    private const int SearchDebounceMs = 250;
 
     // observable collections bound to UI (filtered by search)
-    public ObservableCollection<FieldViewModel> GeneralFields { get; } = [];
-    public ObservableCollection<FieldViewModel> SordlandFields { get; } = [];
-    public ObservableCollection<FieldViewModel> RiziaFields { get; } = [];
+    public BatchObservableCollection<FieldViewModel> GeneralFields { get; } = new();
+    public BatchObservableCollection<FieldViewModel> SordlandFields { get; } = new();
+    public BatchObservableCollection<FieldViewModel> RiziaFields { get; } = new();
 
     // tree navigation for advanced tab
-    public ObservableCollection<CategoryNodeViewModel> CategoryNodes { get; } = [];
-    public ObservableCollection<FieldViewModel> SelectedCategoryFields { get; } = [];
-    public ObservableCollection<SubCategorySummaryViewModel> SubCategorySummaries { get; } = [];
-    public ObservableCollection<BreadcrumbItem> BreadcrumbItems { get; } = [];
+    public BatchObservableCollection<CategoryNodeViewModel> CategoryNodes { get; } = new();
+    public BatchObservableCollection<FieldViewModel> SelectedCategoryFields { get; } = new();
+    public BatchObservableCollection<SubCategorySummaryViewModel> SubCategorySummaries { get; } = new();
+    public BatchObservableCollection<BreadcrumbItem> BreadcrumbItems { get; } = new();
 
     [ObservableProperty]
     private bool _isFileLoaded;
@@ -87,6 +93,9 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _showCategoryFields;
 
+    [ObservableProperty]
+    private bool _saveCommittedToDisk;
+
     public string WindowTitle => IsFileLoaded
         ? $"Suzerain Save Editor \u2014 {Path.GetFileName(FilePath)}{(IsDirty ? " *" : "")}"
         : "Suzerain Save Editor";
@@ -135,12 +144,24 @@ public partial class MainWindowViewModel : ViewModelBase
 
             StatusMessage = "Saving...";
             await _saveFileService.SaveAsync(_editSession.FilePath, _editSession.CurrentDocument);
+            SaveCommittedToDisk = true;
 
             // preserve tab selection and search, reload to reset dirty state
             var savedTab = SelectedGroupIndex;
             var savedSearch = SearchText;
             var savedCategoryKey = SelectedCategory?.Key;
-            await LoadFileAsync(_editSession.FilePath);
+
+            try
+            {
+                await LoadFileCoreAsync(_editSession.FilePath);
+            }
+            catch (Exception ex)
+            {
+                ClearLoadedState();
+                StatusMessage = $"Failed to load: {ex.Message}";
+                return;
+            }
+
             SelectedGroupIndex = savedTab;
             SearchText = savedSearch;
 
@@ -160,7 +181,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    private bool CanSave() => IsDirty && IsFileLoaded;
+    private bool CanSave() => IsDirty && IsFileLoaded && !HasValidationErrors;
 
     [RelayCommand(CanExecute = nameof(CanRevert))]
     private void RevertAll()
@@ -168,17 +189,42 @@ public partial class MainWindowViewModel : ViewModelBase
         if (_editSession is null) return;
 
         _editSession.RevertAll();
+        _validationErrors.Clear();
 
         foreach (var field in AllFields())
             field.ResetToOriginal();
 
         UpdateDirtyState();
+        PopulateSelectedCategoryContent();
         StatusMessage = "All changes reverted";
     }
 
     private bool CanRevert() => IsDirty && IsFileLoaded;
 
-    partial void OnSearchTextChanged(string value) => ApplyFilter();
+    partial void OnSearchTextChanged(string value)
+    {
+        var newCts = new CancellationTokenSource();
+        var old = Interlocked.Exchange(ref _searchDebounce, newCts);
+        old?.Cancel();
+        old?.Dispose();
+        BeginApplyFilterDebounced(newCts.Token);
+    }
+
+    // async void is intentional — this is an event handler dispatch and all
+    // exceptions are caught internally so no Task needs to be observed
+    private async void BeginApplyFilterDebounced(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(SearchDebounceMs, token);
+            ApplyFilter();
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Filter error: {ex.Message}";
+        }
+    }
 
     partial void OnIsFileLoadedChanged(bool value) => OnPropertyChanged(nameof(WindowTitle));
 
@@ -191,8 +237,15 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(WindowTitle));
     }
 
+    partial void OnHasValidationErrorsChanged(bool value)
+    {
+        SaveCommand.NotifyCanExecuteChanged();
+    }
+
     partial void OnSelectedCategoryChanged(CategoryNodeViewModel? oldValue, CategoryNodeViewModel? newValue)
     {
+        if (_suppressCategoryChanged) return;
+
         if (oldValue is not null)
             oldValue.IsSelected = false;
 
@@ -200,9 +253,9 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             newValue.IsSelected = true;
 
-            // auto-expand/collapse parent nodes when selected
+            // always expand parent nodes when selected (breadcrumb or tree click)
             if (newValue.IsParent)
-                newValue.IsExpanded = !newValue.IsExpanded;
+                newValue.IsExpanded = true;
         }
 
         PopulateSelectedCategoryContent();
@@ -230,30 +283,93 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             IsLoading = true;
-            StatusMessage = "Loading...";
-
-            var document = await _saveFileService.OpenAsync(path);
-            var discovered = _discoveryService.DiscoverFields(document);
-            _activeSchema = new Core.Schema.CompositeSchemaService(_schemaService, discovered);
-            _editSession = new EditSession(document, path, _activeSchema, _fieldResolver);
-
-            FilePath = path;
-            IsFileLoaded = true;
-
-            PopulateFields();
-            UpdateDirtyState();
-
-            StatusMessage = $"Loaded: {Path.GetFileName(path)}";
+            await LoadFileCoreAsync(path);
         }
         catch (Exception ex)
         {
+            ClearLoadedState();
             StatusMessage = $"Failed to load: {ex.Message}";
-            IsFileLoaded = false;
         }
         finally
         {
             IsLoading = false;
         }
+    }
+
+    // core loading logic without IsLoading management so callers can control the overlay
+    private async Task LoadFileCoreAsync(string path)
+    {
+        var old = Interlocked.Exchange(ref _searchDebounce, null);
+        old?.Cancel();
+        old?.Dispose();
+
+        StatusMessage = "Loading...";
+
+        var document = await _saveFileService.OpenAsync(path);
+
+        // offload CPU-bound work to a background thread to avoid blocking the UI
+        var (editSession, activeSchema) = await Task.Run(() =>
+        {
+            var discovered = _discoveryService.DiscoverFields(document);
+            var schema = new Core.Schema.CompositeSchemaService(_schemaService, discovered);
+            var session = new EditSession(document, path, schema, _fieldResolver);
+            return (session, (ISchemaService)schema);
+        });
+
+        _activeSchema = activeSchema;
+        _editSession = editSession;
+
+        FilePath = path;
+        IsFileLoaded = true;
+        SaveCommittedToDisk = false;
+
+        PopulateFields();
+        UpdateDirtyState();
+
+        StatusMessage = $"Loaded: {Path.GetFileName(path)}";
+    }
+
+    private void ClearLoadedState()
+    {
+        var oldCts = Interlocked.Exchange(ref _searchDebounce, null);
+        oldCts?.Cancel();
+        oldCts?.Dispose();
+
+        _editSession = null;
+        _activeSchema = null;
+
+        // detach callbacks before clearing to break delegate reference to this VM
+        foreach (var field in AllFields())
+            field.Detach();
+
+        _allGeneralFields.Clear();
+        _allSordlandFields.Clear();
+        _allRiziaFields.Clear();
+        _allAdvancedFields.Clear();
+        _allCategoryNodes.Clear();
+        _fieldLookup.Clear();
+        _validationErrors.Clear();
+        _categoryNodeLookup.Clear();
+        _filterService.Reset();
+
+        GeneralFields.Clear();
+        SordlandFields.Clear();
+        RiziaFields.Clear();
+        CategoryNodes.Clear();
+        SelectedCategoryFields.Clear();
+        SubCategorySummaries.Clear();
+        BreadcrumbItems.Clear();
+
+        AdvancedFieldCount = 0;
+        SelectedCategory = null;
+        HasCategorySelected = false;
+        ShowCategoryCards = false;
+        ShowCategoryFields = false;
+        SelectedCategoryPath = "";
+        FilePath = "";
+        IsFileLoaded = false;
+
+        UpdateDirtyState();
     }
 
     private void PopulateFields()
@@ -263,6 +379,9 @@ public partial class MainWindowViewModel : ViewModelBase
         _allRiziaFields.Clear();
         _allAdvancedFields.Clear();
         _allCategoryNodes.Clear();
+        _fieldLookup.Clear();
+        _validationErrors.Clear();
+        _filterService.Reset();
 
         var schema = _activeSchema ?? _schemaService;
 
@@ -279,6 +398,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 field.Max,
                 field.Options,
                 OnFieldValueChanged);
+
+            _fieldLookup[field.Id] = vm;
 
             switch (field.Group)
             {
@@ -313,72 +434,22 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void BuildCategoryTree(ISchemaService schema)
     {
-        // get field definitions for advanced fields
-        var advancedDefs = _allAdvancedFields
-            .Select(vm => schema.GetById(vm.FieldId))
-            .Where(d => d is not null)
-            .Cast<FieldDefinition>()
-            .ToList();
+        var result = CategoryTreeBuilder.Build(_allAdvancedFields, schema, _fieldLookup);
 
-        // build hierarchical categories
-        var categories = AdvancedFieldGrouper.GroupFieldsHierarchical(advancedDefs);
+        _categoryNodeLookup.Clear();
+        foreach (var (key, node) in result.NodeLookup)
+            _categoryNodeLookup[key] = node;
 
-        // map FieldDefinition → FieldViewModel for quick lookup
-        var vmLookup = _allAdvancedFields.ToDictionary(vm => vm.FieldId, StringComparer.Ordinal);
-
-        // convert FieldCategory tree → CategoryNodeViewModel tree
-        foreach (var category in categories)
-        {
-            var node = BuildCategoryNode(category, vmLookup, parent: null);
-            _allCategoryNodes.Add(node);
-        }
-    }
-
-    private static CategoryNodeViewModel BuildCategoryNode(
-        FieldCategory category,
-        Dictionary<string, FieldViewModel> vmLookup,
-        CategoryNodeViewModel? parent)
-    {
-        // resolve field VMs for this category's leaf fields
-        var fieldVms = new List<FieldViewModel>();
-        foreach (var def in category.Fields)
-        {
-            if (vmLookup.TryGetValue(def.Id, out var vm))
-                fieldVms.Add(vm);
-        }
-
-        // build children first with null parent (fixed up below)
-        var childNodes = new List<CategoryNodeViewModel>();
-        foreach (var childCategory in category.Children)
-        {
-            var childNode = BuildCategoryNode(childCategory, vmLookup, parent: null);
-            childNodes.Add(childNode);
-        }
-
-        // create node with actual children
-        var node = new CategoryNodeViewModel(
-            category.Key,
-            category.Label,
-            category.SortOrder,
-            fieldVms,
-            childNodes,
-            parent);
-
-        // fix up children's parent references to point to this node
-        foreach (var child in childNodes)
-            child.Parent = node;
-
-        return node;
+        _allCategoryNodes.AddRange(result.RootNodes);
     }
 
     private void PopulateSelectedCategoryContent()
     {
-        SelectedCategoryFields.Clear();
-        SubCategorySummaries.Clear();
-        BreadcrumbItems.Clear();
-
         if (SelectedCategory is null)
         {
+            SelectedCategoryFields.Clear();
+            SubCategorySummaries.Clear();
+            BreadcrumbItems.Clear();
             HasCategorySelected = false;
             ShowCategoryCards = false;
             ShowCategoryFields = false;
@@ -399,8 +470,8 @@ public partial class MainWindowViewModel : ViewModelBase
             ShowCategoryFields = false;
 
             var summaries = SelectedCategory.GetSubCategorySummaries(query);
-            foreach (var summary in summaries)
-                SubCategorySummaries.Add(summary);
+            SubCategorySummaries.ReplaceAll(summaries);
+            SelectedCategoryFields.Clear();
         }
         else
         {
@@ -409,48 +480,59 @@ public partial class MainWindowViewModel : ViewModelBase
             ShowCategoryFields = true;
 
             var fields = SelectedCategory.GetFilteredFields(query);
-            foreach (var field in fields)
-                SelectedCategoryFields.Add(field);
+            SelectedCategoryFields.ReplaceAll(fields);
+            SubCategorySummaries.Clear();
         }
     }
 
     private void BuildBreadcrumbItems(CategoryNodeViewModel node)
     {
         // walk up to root, collect ancestors
-        var segments = new List<CategoryNodeViewModel>();
+        var segments = new List<BreadcrumbItem>();
         var current = node;
         while (current is not null)
         {
-            segments.Add(current);
+            segments.Add(new BreadcrumbItem(current.Label, current, false));
             current = current.Parent;
         }
 
         segments.Reverse();
+        if (segments.Count > 0)
+            segments[^1] = segments[^1] with { IsLast = true };
 
-        for (var i = 0; i < segments.Count; i++)
-            BreadcrumbItems.Add(new BreadcrumbItem(segments[i].Label, segments[i], i == segments.Count - 1));
+        BreadcrumbItems.ReplaceAll(segments);
     }
 
     private void OnFieldValueChanged(string fieldId, string value)
     {
         if (_editSession is null) return;
 
+        SaveCommittedToDisk = false;
         var result = _editSession.SetValue(fieldId, value);
 
         var fieldVm = FindFieldViewModel(fieldId);
         if (fieldVm is null) return;
 
+        // always sync dirty indicator from session state — validation failure
+        // doesn't modify the edit, but the indicator should still be consistent
+        fieldVm.IsDirty = _editSession.IsFieldDirty(fieldId);
+
         if (!result.IsValid)
         {
             fieldVm.ValidationError = result.Error;
+            _validationErrors[fieldId] = result.Error ?? "Invalid";
         }
         else
         {
             fieldVm.ValidationError = null;
-            fieldVm.IsDirty = _editSession.GetDirtyFields().Any(e => e.FieldId == fieldId);
+            _validationErrors.Remove(fieldId);
         }
 
         UpdateDirtyState();
+
+        // refresh sub-category cards so dirty pills stay current
+        if (ShowCategoryCards)
+            RefreshSubCategorySummaries();
     }
 
     private void UpdateDirtyState()
@@ -465,8 +547,7 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        var dirtyFields = _editSession.GetDirtyFields();
-        ChangeCount = dirtyFields.Count;
+        ChangeCount = _editSession.DirtyCount;
         IsDirty = ChangeCount > 0;
         ChangeCountText = ChangeCount switch
         {
@@ -475,76 +556,85 @@ public partial class MainWindowViewModel : ViewModelBase
             _ => $"{ChangeCount} unsaved changes"
         };
 
-        var validation = _editSession.ValidateAll();
-        HasValidationErrors = !validation.IsValid;
-        ValidationStatusText = validation.IsValid ? "Valid" : validation.Error ?? "Invalid";
+        HasValidationErrors = _validationErrors.Count > 0;
+        ValidationStatusText = _validationErrors.Count switch
+        {
+            0 => "Valid",
+            1 => FormatSingleValidationError(),
+            _ => $"{_validationErrors.Count} validation errors"
+        };
     }
 
-    private void ApplyFilter()
+    private string FormatSingleValidationError()
     {
-        ApplyFilterToGroup(_allGeneralFields, GeneralFields);
-        ApplyFilterToGroup(_allSordlandFields, SordlandFields);
-        ApplyFilterToGroup(_allRiziaFields, RiziaFields);
-        ApplyFilterToCategoryTree();
+        var (fieldId, error) = _validationErrors.First();
+        var label = _fieldLookup.TryGetValue(fieldId, out var vm) ? vm.Label : fieldId;
+        return $"{label}: {error}";
+    }
+
+    internal void ApplyFilter()
+    {
+        var query = SearchText?.Trim() ?? "";
+
+        GeneralFields.ReplaceAll(FieldFilterService.FilterGroup(query, _allGeneralFields));
+        SordlandFields.ReplaceAll(FieldFilterService.FilterGroup(query, _allSordlandFields));
+        RiziaFields.ReplaceAll(FieldFilterService.FilterGroup(query, _allRiziaFields));
+
+        ApplyTreeFilterResult(
+            _filterService.FilterCategoryTree(query, _allCategoryNodes, _categoryNodeLookup));
+    }
+
+    private void ApplyTreeFilterResult(FieldFilterService.TreeFilterResult result)
+    {
+        // apply expansion updates to nodes
+        if (result.ExpansionUpdates is not null)
+        {
+            foreach (var (key, expanded) in result.ExpansionUpdates)
+            {
+                if (_categoryNodeLookup.TryGetValue(key, out var node))
+                    node.IsExpanded = expanded;
+            }
+        }
+
+        // capture selection before replacing — ReplaceAll triggers the TreeView
+        // two-way binding to write null back into SelectedCategory
+        var savedSelection = SelectedCategory;
+
+        _suppressCategoryChanged = true;
+        try
+        {
+            CategoryNodes.ReplaceAll(result.VisibleRootNodes);
+
+            // restore or clear selection based on visibility
+            if (savedSelection is not null && savedSelection.IsVisible)
+                SelectedCategory = savedSelection;
+            else if (savedSelection is not null)
+                SelectedCategory = null;
+        }
+        finally
+        {
+            _suppressCategoryChanged = false;
+        }
+
+        // refresh content panel for the (restored or cleared) selection
         PopulateSelectedCategoryContent();
     }
 
-    private void ApplyFilterToGroup(List<FieldViewModel> source, ObservableCollection<FieldViewModel> target)
+    private void RefreshSubCategorySummaries()
     {
-        target.Clear();
-        var query = SearchText?.Trim() ?? "";
-
-        foreach (var field in source)
-        {
-            if (string.IsNullOrEmpty(query) ||
-                field.Label.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                field.FieldId.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                (field.Description?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false))
-            {
-                target.Add(field);
-            }
-        }
-    }
-
-    private void ApplyFilterToCategoryTree()
-    {
-        var query = SearchText?.Trim() ?? "";
-        var isSearching = !string.IsNullOrEmpty(query);
-
-        CategoryNodes.Clear();
-        foreach (var node in _allCategoryNodes)
-        {
-            node.ApplyFilter(query);
-            if (node.IsVisible)
-            {
-                if (isSearching)
-                    node.IsExpanded = true;
-                CategoryNodes.Add(node);
-            }
-        }
+        foreach (var summary in SubCategorySummaries)
+            summary.RefreshDirtyCount();
     }
 
     private void SelectCategoryByKey(string key)
     {
-        var node = FindNodeByKey(_allCategoryNodes, key);
-        if (node is not null)
+        if (_categoryNodeLookup.TryGetValue(key, out var node) && node.IsVisible)
             SelectCategory(node);
-    }
-
-    private static CategoryNodeViewModel? FindNodeByKey(IEnumerable<CategoryNodeViewModel> nodes, string key)
-    {
-        foreach (var node in nodes)
-        {
-            if (node.Key == key) return node;
-            var found = FindNodeByKey(node.Children, key);
-            if (found is not null) return found;
-        }
-        return null;
     }
 
     private FieldViewModel? FindFieldViewModel(string fieldId)
     {
-        return AllFields().FirstOrDefault(f => f.FieldId == fieldId);
+        return _fieldLookup.GetValueOrDefault(fieldId);
     }
 
     private IEnumerable<FieldViewModel> AllFields()

@@ -7,6 +7,8 @@ public sealed class BackupService : IBackupService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
 
+        filePath = Path.GetFullPath(filePath);
+
         if (!File.Exists(filePath))
             throw new FileNotFoundException("Cannot backup: file not found.", filePath);
 
@@ -17,7 +19,7 @@ public sealed class BackupService : IBackupService
         Directory.CreateDirectory(backupDir);
 
         var fileName = Path.GetFileName(filePath);
-        var timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+        var timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmssfff");
         var backupFileName = $"{fileName}.bak.{timestamp}";
         var backupPath = Path.Combine(backupDir, backupFileName);
 

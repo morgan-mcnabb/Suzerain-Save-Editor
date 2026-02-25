@@ -154,6 +154,29 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task OpenCommand_LoadFailure_ClearsStaleState()
+    {
+        var failOnSecond = new FailOnSecondOpenSaveFileService(CreateTestDocument());
+        var vm = CreateViewModel(saveFileService: failOnSecond);
+
+        // first open succeeds
+        await vm.OpenCommand.ExecuteAsync(null);
+        Assert.True(vm.IsFileLoaded);
+        Assert.NotEmpty(vm.GeneralFields);
+
+        // second open fails — stale state from first load should be cleared
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        Assert.False(vm.IsFileLoaded);
+        Assert.Empty(vm.GeneralFields);
+        Assert.Empty(vm.SordlandFields);
+        Assert.Empty(vm.RiziaFields);
+        Assert.False(vm.IsDirty);
+        Assert.Equal(0, vm.ChangeCount);
+        Assert.Contains("Failed to load", vm.StatusMessage);
+    }
+
+    [Fact]
     public async Task OpenCommand_SetsCorrectFieldCount()
     {
         var vm = CreateViewModel();
@@ -230,6 +253,34 @@ public sealed class MainWindowViewModelTests
 
         Assert.NotNull(turnNo.ValidationError);
         Assert.True(turnNo.HasValidationError);
+    }
+
+    [Fact]
+    public async Task FieldValueChange_InvalidOnCleanField_NotDirty()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var turnNo = vm.GeneralFields.First(f => f.FieldId == "meta.turnNo");
+        turnNo.Value = "not_a_number";
+
+        Assert.False(turnNo.IsDirty);
+        Assert.False(vm.IsDirty);
+    }
+
+    [Fact]
+    public async Task FieldValueChange_InvalidOnDirtyField_StaysDirty()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        // turnNo has min=1 max=20, original is 5 — use a valid value within range
+        var turnNo = vm.GeneralFields.First(f => f.FieldId == "meta.turnNo");
+        turnNo.Value = "10";
+        Assert.True(turnNo.IsDirty);
+
+        turnNo.Value = "not_a_number";
+        Assert.True(turnNo.IsDirty);
     }
 
     [Fact]
@@ -332,6 +383,40 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task SaveCommand_DisabledWhenDirtyWithValidationErrors()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        // make a valid edit so the session is dirty
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        Assert.True(vm.IsDirty);
+
+        // introduce a validation error
+        var turnNo = vm.GeneralFields.First(f => f.FieldId == "meta.turnNo");
+        turnNo.Value = "not_a_number";
+
+        Assert.True(vm.HasValidationErrors);
+        Assert.False(vm.SaveCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task SaveCommand_ReenabledWhenValidationErrorCleared()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+
+        var turnNo = vm.GeneralFields.First(f => f.FieldId == "meta.turnNo");
+        turnNo.Value = "not_a_number";
+        Assert.False(vm.SaveCommand.CanExecute(null));
+
+        turnNo.Value = "10";
+        Assert.True(vm.SaveCommand.CanExecute(null));
+    }
+
+    [Fact]
     public async Task SaveCommand_InvokesSaveService()
     {
         var fakeSave = new FakeSaveFileService(CreateTestDocument());
@@ -386,6 +471,46 @@ public sealed class MainWindowViewModelTests
         Assert.Contains("Save failed", vm.StatusMessage);
     }
 
+    [Fact]
+    public async Task SaveCommand_ReloadFailure_DoesNotShowSavedSuccessfully()
+    {
+        var failOnReload = new FailOnReloadSaveFileService(CreateTestDocument());
+        var vm = CreateViewModel(saveFileService: failOnReload);
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.DoesNotContain("Saved successfully", vm.StatusMessage);
+        Assert.Contains("Failed to load", vm.StatusMessage);
+        Assert.False(vm.IsFileLoaded);
+    }
+
+    [Fact]
+    public async Task SaveCommand_IsLoadingFalse_AfterSuccessfulSave()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.False(vm.IsLoading);
+    }
+
+    [Fact]
+    public async Task SaveCommand_IsLoadingFalse_AfterReloadFailure()
+    {
+        var failOnReload = new FailOnReloadSaveFileService(CreateTestDocument());
+        var vm = CreateViewModel(saveFileService: failOnReload);
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.False(vm.IsLoading);
+    }
+
     // search
     [Fact]
     public async Task Search_FiltersFieldsByLabel()
@@ -394,6 +519,7 @@ public sealed class MainWindowViewModelTests
         await vm.OpenCommand.ExecuteAsync(null);
 
         vm.SearchText = "Budget";
+        vm.ApplyFilter();
 
         // "Government Budget" in Sordland should match
         Assert.Contains(vm.SordlandFields, f => f.Label.Contains("Budget"));
@@ -412,9 +538,11 @@ public sealed class MainWindowViewModelTests
         await vm.OpenCommand.ExecuteAsync(null);
 
         vm.SearchText = "Budget";
+        vm.ApplyFilter();
         var filteredCount = vm.SordlandFields.Count;
 
         vm.SearchText = "";
+        vm.ApplyFilter();
 
         Assert.Equal(39, vm.SordlandFields.Count);
         Assert.True(vm.SordlandFields.Count > filteredCount);
@@ -427,6 +555,7 @@ public sealed class MainWindowViewModelTests
         await vm.OpenCommand.ExecuteAsync(null);
 
         vm.SearchText = "CAMPAIGN";
+        vm.ApplyFilter();
         Assert.Contains(vm.GeneralFields, f => f.FieldId == "meta.campaignName");
     }
 
@@ -437,6 +566,7 @@ public sealed class MainWindowViewModelTests
         await vm.OpenCommand.ExecuteAsync(null);
 
         vm.SearchText = "faction";
+        vm.ApplyFilter();
         // several Sordland opinion fields have "faction" in their descriptions
         Assert.NotEmpty(vm.SordlandFields);
     }
@@ -450,6 +580,7 @@ public sealed class MainWindowViewModelTests
         // make edit before filtering so the field is still accessible
         vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
         vm.SearchText = "Budget";
+        vm.ApplyFilter();
         await vm.SaveCommand.ExecuteAsync(null);
 
         Assert.Equal("Budget", vm.SearchText);
@@ -587,6 +718,38 @@ public sealed class MainWindowViewModelTests
                 Description = "Entity: Custom_Ent.Score"
             }
         ];
+    }
+
+    private static IReadOnlyList<FieldDefinition> CreateDiscoveredFieldsWithParentNode()
+    {
+        // generates 35 fields across 2 sub-categories in one namespace,
+        // exceeding SubCategoryThreshold (30) so the grouper creates child nodes
+        var fields = new List<FieldDefinition>();
+        for (var i = 0; i < 20; i++)
+        {
+            fields.Add(new FieldDefinition
+            {
+                Id = $"discovered.var.TestNS.SubA_Field{i:D2}",
+                Path = $"variable:TestNS.SubA_Field{i:D2}",
+                Label = $"SubA Field {i}",
+                Group = FieldGroup.Advanced,
+                Type = FieldType.Bool,
+                Source = FieldSource.Variable
+            });
+        }
+        for (var i = 0; i < 15; i++)
+        {
+            fields.Add(new FieldDefinition
+            {
+                Id = $"discovered.var.TestNS.SubB_Field{i:D2}",
+                Path = $"variable:TestNS.SubB_Field{i:D2}",
+                Label = $"SubB Field {i}",
+                Group = FieldGroup.Advanced,
+                Type = FieldType.Bool,
+                Source = FieldSource.Variable
+            });
+        }
+        return fields;
     }
 
     private MainWindowViewModel CreateViewModelWithDiscoveredFields(
@@ -782,6 +945,7 @@ public sealed class MainWindowViewModelTests
         await vm.OpenCommand.ExecuteAsync(null);
 
         vm.SearchText = "Diplomacy";
+        vm.ApplyFilter();
 
         // only nodes with matching fields should be visible
         Assert.True(vm.CategoryNodes.Count >= 1);
@@ -796,10 +960,63 @@ public sealed class MainWindowViewModelTests
         await vm.OpenCommand.ExecuteAsync(null);
 
         vm.SearchText = "Diplomacy";
+        vm.ApplyFilter();
 
         var turns = vm.CategoryNodes.FirstOrDefault(n => n.Key == "Turns");
         Assert.NotNull(turns);
         Assert.True(turns.IsExpanded);
+    }
+
+    [Fact]
+    public async Task AdvancedTab_ClearSearchRestoresCollapseState()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        Assert.All(vm.CategoryNodes, n => Assert.False(n.IsExpanded));
+
+        vm.SearchText = "Diplomacy";
+        vm.ApplyFilter();
+
+        vm.SearchText = "";
+        vm.ApplyFilter();
+
+        Assert.All(vm.CategoryNodes, n => Assert.False(n.IsExpanded));
+    }
+
+    [Fact]
+    public async Task AdvancedTab_ClearSearchPreservesManualExpansion()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var turns = vm.CategoryNodes.FirstOrDefault(n => n.Key == "Turns");
+        Assert.NotNull(turns);
+        turns.IsExpanded = true;
+
+        vm.SearchText = "Diplomacy";
+        vm.ApplyFilter();
+
+        vm.SearchText = "";
+        vm.ApplyFilter();
+
+        Assert.True(turns.IsExpanded);
+    }
+
+    [Fact]
+    public async Task AdvancedTab_SearchExpandsIntermediateParentNodes()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithParentNode());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var parent = vm.CategoryNodes.FirstOrDefault(n => n.IsParent);
+        Assert.NotNull(parent);
+        Assert.False(parent.IsExpanded);
+
+        vm.SearchText = "SubA";
+        vm.ApplyFilter();
+
+        Assert.True(parent.IsExpanded);
     }
 
     [Fact]
@@ -863,11 +1080,10 @@ public sealed class MainWindowViewModelTests
     [Fact]
     public async Task SelectCategory_ParentNode_ShowsCategoryCards()
     {
-        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithParentNode());
         await vm.OpenCommand.ExecuteAsync(null);
 
-        var parentNode = vm.CategoryNodes.FirstOrDefault(n => n.IsParent);
-        if (parentNode is null) return; // skip if no parent nodes in this dataset
+        var parentNode = vm.CategoryNodes.First(n => n.IsParent);
 
         vm.SelectCategory(parentNode);
 
@@ -914,11 +1130,10 @@ public sealed class MainWindowViewModelTests
     [Fact]
     public async Task SelectCategory_ParentNode_AutoExpands()
     {
-        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithParentNode());
         await vm.OpenCommand.ExecuteAsync(null);
 
-        var parentNode = vm.CategoryNodes.FirstOrDefault(n => n.IsParent);
-        if (parentNode is null) return;
+        var parentNode = vm.CategoryNodes.First(n => n.IsParent);
 
         Assert.False(parentNode.IsExpanded);
         vm.SelectCategory(parentNode);
@@ -927,31 +1142,29 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task SelectCategory_ParentNode_ClickAgainCollapses()
+    public async Task SelectCategory_ParentNode_StaysExpandedOnReselect()
     {
-        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithParentNode());
         await vm.OpenCommand.ExecuteAsync(null);
 
-        var parentNode = vm.CategoryNodes.FirstOrDefault(n => n.IsParent);
-        if (parentNode is null) return;
+        var parentNode = vm.CategoryNodes.First(n => n.IsParent);
 
         vm.SelectCategory(parentNode);
         Assert.True(parentNode.IsExpanded);
 
-        // deselect then re-select to simulate clicking again
+        // deselect then re-select — should stay expanded (not toggle)
         vm.SelectCategory(null);
         vm.SelectCategory(parentNode);
-        Assert.False(parentNode.IsExpanded);
+        Assert.True(parentNode.IsExpanded);
     }
 
     [Fact]
     public async Task NavigateToSubCategory_SelectsTargetNode()
     {
-        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithParentNode());
         await vm.OpenCommand.ExecuteAsync(null);
 
-        var parentNode = vm.CategoryNodes.FirstOrDefault(n => n.IsParent);
-        if (parentNode is null) return;
+        var parentNode = vm.CategoryNodes.First(n => n.IsParent);
 
         vm.SelectCategory(parentNode);
         Assert.NotEmpty(vm.SubCategorySummaries);
@@ -975,6 +1188,194 @@ public sealed class MainWindowViewModelTests
         Assert.Empty(vm.SubCategorySummaries);
     }
 
+    [Fact]
+    public async Task RevertAll_RefreshesSubCategorySummaryDirtyCounts()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithParentNode());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        // select a parent node to show cards
+        var parentNode = vm.CategoryNodes.First(n => n.IsParent);
+        vm.SelectCategory(parentNode);
+        Assert.True(vm.ShowCategoryCards);
+
+        // edit a field that belongs to one of the sub-categories
+        var descendantField = parentNode.GetAllDescendantFields().First();
+        descendantField.BoolValue = !descendantField.BoolValue;
+        Assert.True(vm.IsDirty);
+
+        // cards should reflect the dirty field
+        Assert.Contains(vm.SubCategorySummaries, s => s.HasDirtyFields);
+
+        // revert and verify cards are refreshed with zero dirty counts
+        vm.RevertAllCommand.Execute(null);
+        Assert.DoesNotContain(vm.SubCategorySummaries, s => s.HasDirtyFields);
+    }
+
+    [Fact]
+    public async Task Save_WithFilteredOutCategory_DoesNotSelectInvisibleNode()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        // select a category that will be filtered out
+        var customNode = vm.CategoryNodes.SelectMany(n => n.Children.Prepend(n))
+            .FirstOrDefault(n => n.Key == "Custom");
+        Assert.NotNull(customNode);
+        vm.SelectCategory(customNode);
+        Assert.Same(customNode, vm.SelectedCategory);
+
+        // make an edit so save will proceed (before filtering hides the field)
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+
+        // filter to something that hides "Custom"
+        vm.SearchText = "Diplomacy";
+        vm.ApplyFilter();
+        Assert.DoesNotContain(vm.CategoryNodes.SelectMany(n => n.Children.Prepend(n)),
+            n => n.Key == "Custom");
+
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        // the previously selected node should NOT be restored since it's invisible
+        Assert.Null(vm.SelectedCategory);
+    }
+
+    // search preserves category selection
+    [Fact]
+    public async Task Search_PreservesCategorySelection_WhenNodeStaysVisible()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        // select the Turns node
+        var turns = vm.CategoryNodes.FirstOrDefault(n => n.Key == "Turns");
+        Assert.NotNull(turns);
+        vm.SelectCategory(turns);
+        Assert.Same(turns, vm.SelectedCategory);
+
+        // search for something that still matches this node's fields
+        var field = turns.AllFields.First();
+        vm.SearchText = field.Label;
+        vm.ApplyFilter();
+
+        // selection should be preserved since the node is still visible
+        Assert.Same(turns, vm.SelectedCategory);
+        Assert.True(vm.HasCategorySelected);
+    }
+
+    [Fact]
+    public async Task Search_ClearsSelection_WhenNodeBecomesInvisible()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        // select a node
+        var customNode = vm.CategoryNodes.SelectMany(n => n.Children.Prepend(n))
+            .FirstOrDefault(n => n.Key == "Custom");
+        Assert.NotNull(customNode);
+        vm.SelectCategory(customNode);
+        Assert.Same(customNode, vm.SelectedCategory);
+
+        // search for something that hides the selected node
+        vm.SearchText = "Diplomacy";
+        vm.ApplyFilter();
+
+        Assert.Null(vm.SelectedCategory);
+        Assert.False(vm.HasCategorySelected);
+    }
+
+    [Fact]
+    public async Task Search_ClearingSearch_PreservesSelection()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        // select a node, then search, then clear
+        var turns = vm.CategoryNodes.FirstOrDefault(n => n.Key == "Turns");
+        Assert.NotNull(turns);
+        vm.SelectCategory(turns);
+
+        vm.SearchText = "Diplomacy";
+        vm.ApplyFilter();
+        // turns should still be visible and selected
+        Assert.Same(turns, vm.SelectedCategory);
+
+        vm.SearchText = "";
+        vm.ApplyFilter();
+        Assert.Same(turns, vm.SelectedCategory);
+    }
+
+    // save committed to disk flag
+    [Fact]
+    public async Task SaveCommittedToDisk_FalseInitially()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        Assert.False(vm.SaveCommittedToDisk);
+    }
+
+    [Fact]
+    public async Task SaveCommittedToDisk_FalseAfterSuccessfulSave()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        // successful save + successful reload clears the flag
+        Assert.False(vm.SaveCommittedToDisk);
+        Assert.False(vm.IsDirty);
+    }
+
+    [Fact]
+    public async Task SaveCommittedToDisk_TrueWhenReloadFails()
+    {
+        var failOnReload = new FailOnReloadSaveFileService(CreateTestDocument());
+        var vm = CreateViewModel(saveFileService: failOnReload);
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        // save succeeded but reload failed — flag should be true
+        Assert.True(vm.SaveCommittedToDisk);
+        Assert.False(vm.IsDirty);
+        Assert.False(vm.IsFileLoaded);
+    }
+
+    [Fact]
+    public async Task SaveCommittedToDisk_ReloadFailure_ClearsStaleState()
+    {
+        var failOnReload = new FailOnReloadSaveFileService(CreateTestDocument());
+        var vm = CreateViewModel(saveFileService: failOnReload);
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        // stale fields and collections should be cleared
+        Assert.Empty(vm.GeneralFields);
+        Assert.Empty(vm.SordlandFields);
+        Assert.Empty(vm.RiziaFields);
+        Assert.Equal(0, vm.ChangeCount);
+    }
+
+    [Fact]
+    public async Task SaveCommittedToDisk_FalseAfterFailedSave()
+    {
+        var failingSave = new FailingSaveFileService(CreateTestDocument());
+        var vm = CreateViewModel(saveFileService: failingSave);
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        // save itself failed — flag should remain false
+        Assert.False(vm.SaveCommittedToDisk);
+    }
+
     // test doubles
     private sealed class FakeSaveFileService : ISaveFileService
     {
@@ -992,6 +1393,26 @@ public sealed class MainWindowViewModelTests
         }
     }
 
+    private sealed class FailOnReloadSaveFileService : ISaveFileService
+    {
+        private readonly SaveDocument _document;
+        private int _openCount;
+
+        public FailOnReloadSaveFileService(SaveDocument document) => _document = document;
+
+        public Task<SaveDocument> OpenAsync(string filePath)
+        {
+            _openCount++;
+            // first open succeeds (initial load), second open fails (reload after save)
+            if (_openCount > 1)
+                throw new IOException("Simulated reload failure");
+            return Task.FromResult(_document);
+        }
+
+        public Task SaveAsync(string filePath, SaveDocument document)
+            => Task.CompletedTask;
+    }
+
     private sealed class FailingSaveFileService : ISaveFileService
     {
         private readonly SaveDocument _document;
@@ -1002,6 +1423,25 @@ public sealed class MainWindowViewModelTests
 
         public Task SaveAsync(string filePath, SaveDocument document)
             => throw new IOException("Simulated save failure");
+    }
+
+    private sealed class FailOnSecondOpenSaveFileService : ISaveFileService
+    {
+        private readonly SaveDocument _document;
+        private int _openCount;
+
+        public FailOnSecondOpenSaveFileService(SaveDocument document) => _document = document;
+
+        public Task<SaveDocument> OpenAsync(string filePath)
+        {
+            _openCount++;
+            if (_openCount > 1)
+                throw new IOException("Simulated open failure");
+            return Task.FromResult(_document);
+        }
+
+        public Task SaveAsync(string filePath, SaveDocument document)
+            => Task.CompletedTask;
     }
 
     private sealed class FakeFileDialogService : IFileDialogService

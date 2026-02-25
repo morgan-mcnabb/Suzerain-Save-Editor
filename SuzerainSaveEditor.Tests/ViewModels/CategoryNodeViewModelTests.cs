@@ -380,6 +380,88 @@ public sealed class CategoryNodeViewModelTests
     // GetSubCategorySummaries
 
     [Fact]
+    public void ApplyFilter_ClearWhenAlreadyUnfiltered_DoesNotRebuildChildren()
+    {
+        var parent = CreateParentNode();
+        var childrenBefore = parent.Children.ToList();
+
+        parent.ApplyFilter("");
+
+        // children should be the exact same object references in the same order
+        Assert.Equal(childrenBefore.Count, parent.Children.Count);
+        for (var i = 0; i < childrenBefore.Count; i++)
+            Assert.Same(childrenBefore[i], parent.Children[i]);
+    }
+
+    [Fact]
+    public void ApplyFilter_SameQueryTwice_DoesNotRebuildChildren()
+    {
+        var parent = CreateParentNode();
+
+        parent.ApplyFilter("Constitutional");
+        Assert.Single(parent.Children);
+        var childrenAfterFirst = parent.Children.ToList();
+
+        // track whether the collection was replaced
+        var collectionChanged = false;
+        parent.Children.CollectionChanged += (_, _) => collectionChanged = true;
+
+        parent.ApplyFilter("Constitutional");
+
+        // same visible set — collection should not have been rebuilt
+        Assert.False(collectionChanged);
+        Assert.Single(parent.Children);
+        Assert.Same(childrenAfterFirst[0], parent.Children[0]);
+    }
+
+    [Fact]
+    public void ApplyFilter_DifferentQuery_RebuildChildren()
+    {
+        var parent = CreateParentNode();
+
+        parent.ApplyFilter("Constitutional");
+        Assert.Single(parent.Children);
+
+        parent.ApplyFilter("Economy");
+
+        // different visible set — should have rebuilt
+        Assert.Single(parent.Children);
+        Assert.Equal("Situation", parent.Children[0].Label);
+    }
+
+    [Fact]
+    public void ApplyFilter_ClearAfterFilter_RebuildsChildren()
+    {
+        var parent = CreateParentNode();
+        parent.ApplyFilter("Constitutional");
+        Assert.Single(parent.Children);
+
+        parent.ApplyFilter("");
+
+        Assert.Equal(2, parent.Children.Count);
+        Assert.Equal("Situation", parent.Children[0].Label);
+        Assert.Equal("Policy", parent.Children[1].Label);
+    }
+
+    [Fact]
+    public void ApplyFilter_ClearWhenUnfiltered_StillRecursesIntoChildren()
+    {
+        var parent = CreateParentNode();
+
+        // filter first so children have reduced FilteredCount
+        parent.ApplyFilter("Economy");
+        Assert.Single(parent.Children);
+        Assert.Equal(1, parent.Children[0].FilteredCount);
+
+        // now clear — even though parent rebuilds Children, the children
+        // themselves must have their counts restored
+        parent.ApplyFilter("");
+        Assert.Equal(2, parent.Children.Count);
+        Assert.Equal(2, parent.Children[0].FilteredCount); // Situation has 2 fields
+        Assert.Equal(2, parent.Children[1].FilteredCount); // Policy has 2 fields
+    }
+
+    [Fact]
     public void GetSubCategorySummaries_LeafNode_ReturnsEmpty()
     {
         var node = CreateLeafNode();

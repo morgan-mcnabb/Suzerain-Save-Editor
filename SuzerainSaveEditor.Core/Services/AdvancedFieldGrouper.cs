@@ -7,10 +7,13 @@ namespace SuzerainSaveEditor.Core.Services;
 public static partial class AdvancedFieldGrouper
 {
     [GeneratedRegex(@"^GameCondition\.Turn(\d{2})_", RegexOptions.Compiled)]
-    private static partial Regex TurnPattern();
+    private static partial Regex TurnPatternGenerated();
 
     [GeneratedRegex(@"^Turn\d{2}$", RegexOptions.Compiled)]
-    private static partial Regex TurnSubCategoryPattern();
+    private static partial Regex TurnSubCategoryPatternGenerated();
+
+    private static readonly Regex TurnPatternRegex = TurnPatternGenerated();
+    private static readonly Regex TurnSubCategoryRegex = TurnSubCategoryPatternGenerated();
 
     // minimum fields before a namespace gets sub-categorized
     private const int SubCategoryThreshold = 30;
@@ -67,7 +70,7 @@ public static partial class AdvancedFieldGrouper
         var key = ExtractKey(field);
 
         // turn-prefixed: GameCondition.TurnXX_... → unified Turns namespace
-        var turnMatch = TurnPattern().Match(key);
+        var turnMatch = TurnPatternRegex.Match(key);
         if (turnMatch.Success)
         {
             var turnNum = turnMatch.Groups[1].Value;
@@ -87,7 +90,7 @@ public static partial class AdvancedFieldGrouper
                 var prefix = nameInDb[..entityUs];
 
                 // TurnXX entities → unified Turns namespace
-                if (TurnSubCategoryPattern().IsMatch(prefix))
+                if (TurnSubCategoryRegex.IsMatch(prefix))
                 {
                     var turnNum = prefix[4..]; // "01" from "Turn01"
                     return ("Turns", $"Turn{turnNum}", "Turns", $"Turn {int.Parse(turnNum)}");
@@ -121,7 +124,7 @@ public static partial class AdvancedFieldGrouper
             if (firstUnderscore >= 0)
             {
                 var subCat = afterDot[..firstUnderscore];
-                if (TurnSubCategoryPattern().IsMatch(subCat))
+                if (TurnSubCategoryRegex.IsMatch(subCat))
                 {
                     var turnNum = subCat[4..]; // "01" from "Turn01"
                     return ("Turns", $"Turn{turnNum}", "Turns", $"Turn {int.Parse(turnNum)}");

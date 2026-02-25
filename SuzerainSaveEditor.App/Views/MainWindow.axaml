@@ -18,22 +18,6 @@
     </Window.KeyBindings>
 
     <Window.Styles>
-        <!-- strip selection/hover visuals from field list boxes -->
-        <Style Selector="ListBox.field-list">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-        </Style>
-        <Style Selector="ListBox.field-list ListBoxItem">
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="MinHeight" Value="0" />
-            <Setter Property="Template">
-                <ControlTemplate>
-                    <ContentPresenter Content="{TemplateBinding Content}"
-                                      ContentTemplate="{TemplateBinding ContentTemplate}" />
-                </ControlTemplate>
-            </Setter>
-        </Style>
-
         <!-- card button: remove default chrome, add hover effect -->
         <Style Selector="Button.card-button">
             <Setter Property="Cursor" Value="Hand" />
@@ -87,6 +71,25 @@
         </Style>
         <Style Selector="Button.breadcrumb-link:pointerover TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource AccentPrimary}" />
+        </Style>
+
+        <!-- virtualized field list: suppress ListBox selection/hover chrome -->
+        <Style Selector="ListBox.field-list">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+        </Style>
+        <Style Selector="ListBox.field-list ListBoxItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+        </Style>
+        <Style Selector="ListBox.field-list ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.field-list ListBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
         </Style>
     </Window.Styles>
 
@@ -364,25 +367,19 @@
                     <TabItem Header="General">
                         <ListBox Classes="field-list"
                                  ItemsSource="{Binding GeneralFields}"
-                                 ItemTemplate="{StaticResource FieldEditorTemplate}"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                 Padding="8,4" />
+                                 ItemTemplate="{StaticResource FieldEditorTemplate}" />
                     </TabItem>
 
                     <TabItem Header="Sordland">
                         <ListBox Classes="field-list"
                                  ItemsSource="{Binding SordlandFields}"
-                                 ItemTemplate="{StaticResource FieldEditorTemplate}"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                 Padding="8,4" />
+                                 ItemTemplate="{StaticResource FieldEditorTemplate}" />
                     </TabItem>
 
                     <TabItem Header="Rizia">
                         <ListBox Classes="field-list"
                                  ItemsSource="{Binding RiziaFields}"
-                                 ItemTemplate="{StaticResource FieldEditorTemplate}"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                 Padding="8,4" />
+                                 ItemTemplate="{StaticResource FieldEditorTemplate}" />
                     </TabItem>
 
                     <TabItem>
@@ -599,8 +596,6 @@
                                     <ListBox Classes="field-list"
                                              ItemsSource="{Binding SelectedCategoryFields}"
                                              ItemTemplate="{StaticResource FieldEditorTemplate}"
-                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                             Padding="8,4"
                                              IsVisible="{Binding ShowCategoryFields}" />
                                 </Panel>
                             </DockPanel>

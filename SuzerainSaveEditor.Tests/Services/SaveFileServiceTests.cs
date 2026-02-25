@@ -243,6 +243,23 @@ public sealed class SaveFileServiceTests : IDisposable
         Assert.Equal(originalContent, savedContent);
     }
 
+    [Fact]
+    public async Task SaveAsync_DoesNotWriteUtf8Bom()
+    {
+        var filePath = Path.Combine(_tempDir, "no_bom.json");
+        var service = CreateService();
+        var doc = CreateMinimalDocument();
+
+        await service.SaveAsync(filePath, doc);
+
+        var bytes = await File.ReadAllBytesAsync(filePath);
+        // UTF-8 BOM is 0xEF 0xBB 0xBF
+        Assert.True(bytes.Length >= 3);
+        Assert.False(
+            bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF,
+            "Saved file should not contain a UTF-8 BOM");
+    }
+
     // test double that always throws
     private sealed class FailingBackupService : IBackupService
     {

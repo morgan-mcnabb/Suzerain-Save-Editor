@@ -1,3 +1,4 @@
+using System.Globalization;
 using SuzerainSaveEditor.Core.Models;
 using SuzerainSaveEditor.Core.Schema;
 
@@ -22,7 +23,8 @@ public sealed class FieldResolver : IFieldResolver
             _ => throw new ArgumentOutOfRangeException(nameof(field), $"Unknown field source: {field.Source}")
         };
 
-        // normalize bool values to consistent casing regardless of source
+        // normalize bool values to consistent casing regardless of source;
+        // if the value is unparseable, return it as-is so the UI can display it
         if (raw is not null && field.Type == FieldType.Bool && bool.TryParse(raw, out var b))
             return b.ToString();
 
@@ -47,14 +49,14 @@ public sealed class FieldResolver : IFieldResolver
     private static string? ReadVariable(SaveDocument document, string path)
     {
         var key = StripPrefix(path, "variable:");
-        var variable = document.Variables.FirstOrDefault(v => v.Key == key);
-        return variable?.Value switch
+        if (!document.VariableIndex.TryGetValue(key, out var idx))
+            return null;
+        return document.Variables[idx].Value switch
         {
             LuaValue.Bool b => b.Value.ToString(),
             LuaValue.Int i => i.Value.ToString(),
             LuaValue.Num n => n.Raw,
             LuaValue.Str s => s.Value,
-            null => null,
             _ => null
         };
     }
@@ -64,48 +66,28 @@ public sealed class FieldResolver : IFieldResolver
         var key = StripPrefix(field.Path, "variable:");
         var luaValue = ConvertToLuaValue(field.Type, value);
 
-        if (!document.Variables.Any(v => v.Key == key))
+        if (!document.VariableIndex.TryGetValue(key, out var idx))
             throw new KeyNotFoundException($"Variable '{key}' not found in save document.");
 
-        var newVariables = document.Variables.Select(v =>
-            v.Key == key ? new LuaVariable(key, luaValue) : v).ToList();
-
-        return new SaveDocument
-        {
-            Metadata = document.Metadata,
-            WarSaveData = document.WarSaveData,
-            Variables = newVariables,
-            EntityUpdates = document.EntityUpdates
-        };
+        return document.ReplaceVariable(idx, new LuaVariable(key, luaValue));
     }
 
     private static string? ReadEntityUpdate(SaveDocument document, string path)
     {
         var (nameInDatabase, fieldName) = ParseEntityPath(path);
-        var entity = document.EntityUpdates.FirstOrDefault(e =>
-            e.NameInDatabase == nameInDatabase && e.FieldName == fieldName);
-        return entity?.FieldValue;
+        if (!document.EntityIndex.TryGetValue((nameInDatabase, fieldName), out var idx))
+            return null;
+        return document.EntityUpdates[idx].FieldValue;
     }
 
     private static SaveDocument WriteEntityUpdate(SaveDocument document, string path, string value)
     {
         var (nameInDatabase, fieldName) = ParseEntityPath(path);
 
-        if (!document.EntityUpdates.Any(e => e.NameInDatabase == nameInDatabase && e.FieldName == fieldName))
+        if (!document.EntityIndex.TryGetValue((nameInDatabase, fieldName), out var idx))
             throw new KeyNotFoundException($"Entity update '{nameInDatabase}.{fieldName}' not found in save document.");
 
-        var newUpdates = document.EntityUpdates.Select(e =>
-            e.NameInDatabase == nameInDatabase && e.FieldName == fieldName
-                ? new EntityUpdate(nameInDatabase, fieldName, value)
-                : e).ToList();
-
-        return new SaveDocument
-        {
-            Metadata = document.Metadata,
-            WarSaveData = document.WarSaveData,
-            Variables = document.Variables,
-            EntityUpdates = newUpdates
-        };
+        return document.ReplaceEntityUpdate(idx, new EntityUpdate(nameInDatabase, fieldName, value));
     }
 
     private static string? ReadMetadata(SaveDocument document, string path)
@@ -124,7 +106,7 @@ public sealed class FieldResolver : IFieldResolver
             "isVersionMismatched" => document.Metadata.IsVersionMismatched.ToString(),
             "isTorporModeOn" => document.Metadata.IsTorporModeOn.ToString(),
             "notes" => document.Metadata.Notes,
-            _ => null
+            _ => throw new ArgumentException($"Unknown metadata property: {property}")
         };
     }
 
@@ -135,37 +117,45 @@ public sealed class FieldResolver : IFieldResolver
 
         var newMeta = property switch
         {
-            "saveFileType" => meta with { SaveFileType = int.Parse(value) },
+            "saveFileType" => meta with { SaveFileType = ParseInt(value, property) },
             "campaignName" => meta with { CampaignName = value },
             "currentStoryPack" => meta with { CurrentStoryPack = value },
-            "turnNo" => meta with { TurnNo = int.Parse(value) },
+            "turnNo" => meta with { TurnNo = ParseInt(value, property) },
             "saveFileName" => meta with { SaveFileName = value },
-            "sceneBuildIndex" => meta with { SceneBuildIndex = int.Parse(value) },
+            "sceneBuildIndex" => meta with { SceneBuildIndex = ParseInt(value, property) },
             "lastModified" => meta with { LastModified = value },
             "version" => meta with { Version = value },
-            "isVersionMismatched" => meta with { IsVersionMismatched = bool.Parse(value) },
-            "isTorporModeOn" => meta with { IsTorporModeOn = bool.Parse(value) },
+            "isVersionMismatched" => meta with { IsVersionMismatched = ParseBool(value, property) },
+            "isTorporModeOn" => meta with { IsTorporModeOn = ParseBool(value, property) },
             "notes" => meta with { Notes = value },
             _ => throw new ArgumentException($"Unknown metadata property: {property}")
         };
 
-        return new SaveDocument
-        {
-            Metadata = newMeta,
-            WarSaveData = document.WarSaveData,
-            Variables = document.Variables,
-            EntityUpdates = document.EntityUpdates
-        };
+        return document.ReplaceMetadata(newMeta);
     }
 
     private static LuaValue ConvertToLuaValue(FieldType type, string value) => type switch
     {
-        FieldType.Bool => new LuaValue.Bool(bool.Parse(value)),
-        FieldType.Int => new LuaValue.Int(int.Parse(value)),
+        FieldType.Bool => new LuaValue.Bool(ParseBool(value, "variable")),
+        FieldType.Int => new LuaValue.Int(ParseInt(value, "variable")),
         FieldType.Decimal => new LuaValue.Num(value),
         FieldType.String or FieldType.Enum => new LuaValue.Str(value),
         _ => throw new ArgumentOutOfRangeException(nameof(type), $"Unknown field type: {type}")
     };
+
+    private static int ParseInt(string value, string property)
+    {
+        if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result))
+            throw new FormatException($"Cannot convert '{value}' to int for metadata property '{property}'.");
+        return result;
+    }
+
+    private static bool ParseBool(string value, string property)
+    {
+        if (!bool.TryParse(value, out var result))
+            throw new FormatException($"Cannot convert '{value}' to bool for metadata property '{property}'.");
+        return result;
+    }
 
     private static string StripPrefix(string path, string prefix)
     {
