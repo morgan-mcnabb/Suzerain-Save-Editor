@@ -39,11 +39,12 @@ public sealed partial class FieldDiscoveryService(ISchemaService schemaService) 
             StringComparer.Ordinal);
 
         var discovered = new List<FieldDefinition>();
+        var emittedPaths = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var variable in document.Variables)
         {
             var path = $"variable:{variable.Key}";
-            if (mappedPaths.Contains(path))
+            if (mappedPaths.Contains(path) || !emittedPaths.Add(path))
                 continue;
 
             var (label, description) = GenerateAdvancedLabelAndDescription(variable.Key);
@@ -62,7 +63,7 @@ public sealed partial class FieldDiscoveryService(ISchemaService schemaService) 
         foreach (var entity in document.EntityUpdates)
         {
             var path = $"entity:{entity.NameInDatabase}.{entity.FieldName}";
-            if (mappedPaths.Contains(path))
+            if (mappedPaths.Contains(path) || !emittedPaths.Add(path))
                 continue;
 
             discovered.Add(new FieldDefinition

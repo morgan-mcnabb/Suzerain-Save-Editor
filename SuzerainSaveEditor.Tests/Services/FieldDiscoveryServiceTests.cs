@@ -129,6 +129,52 @@ public sealed class FieldDiscoveryServiceTests
     }
 
     [Fact]
+    public void DiscoverFields_DuplicateEntities_DeduplicatedByPath()
+    {
+        var doc = CreateDocument(entities: [
+            new EntityUpdate("Custom_Entity", "Score", "100"),
+            new EntityUpdate("Custom_Entity", "Score", "200"),
+            new EntityUpdate("Custom_Entity", "Score", "300")
+        ]);
+
+        var discovered = _service.DiscoverFields(doc);
+
+        Assert.Single(discovered);
+        Assert.Equal("discovered.entity.Custom_Entity.Score", discovered[0].Id);
+    }
+
+    [Fact]
+    public void DiscoverFields_DuplicateEntities_DistinctFieldNamesPreserved()
+    {
+        var doc = CreateDocument(entities: [
+            new EntityUpdate("Custom_Entity", "Score", "100"),
+            new EntityUpdate("Custom_Entity", "Score", "200"),
+            new EntityUpdate("Custom_Entity", "Health", "50")
+        ]);
+
+        var discovered = _service.DiscoverFields(doc);
+
+        Assert.Equal(2, discovered.Count);
+        Assert.Contains(discovered, f => f.Id == "discovered.entity.Custom_Entity.Score");
+        Assert.Contains(discovered, f => f.Id == "discovered.entity.Custom_Entity.Health");
+    }
+
+    [Fact]
+    public void DiscoverFields_DuplicateVariables_DeduplicatedByPath()
+    {
+        // variables shouldn't normally have duplicates, but guard against it
+        var doc = CreateDocument(variables: [
+            new LuaVariable("Custom.Flag", new LuaValue.Bool(true)),
+            new LuaVariable("Custom.Flag", new LuaValue.Bool(false))
+        ]);
+
+        var discovered = _service.DiscoverFields(doc);
+
+        Assert.Single(discovered);
+        Assert.Equal("discovered.var.Custom.Flag", discovered[0].Id);
+    }
+
+    [Fact]
     public void DiscoverFields_AllFieldsHaveGroupAdvanced()
     {
         var doc = CreateDocument(
