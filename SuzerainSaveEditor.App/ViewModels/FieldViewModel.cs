@@ -47,8 +47,14 @@ public sealed partial class FieldViewModel : ViewModelBase
             if (Value != str)
             {
                 _suppressBoolNotify = true;
-                Value = str;
-                _suppressBoolNotify = false;
+                try
+                {
+                    Value = str;
+                }
+                finally
+                {
+                    _suppressBoolNotify = false;
+                }
             }
         }
     }
@@ -111,10 +117,16 @@ public sealed partial class FieldViewModel : ViewModelBase
     public void UpdateFromSession(string? currentValue, bool isDirty, string? validationError)
     {
         _suppressChanges = true;
-        Value = currentValue ?? "";
-        IsDirty = isDirty;
-        ValidationError = validationError;
-        _suppressChanges = false;
+        try
+        {
+            Value = currentValue ?? "";
+            IsDirty = isDirty;
+            ValidationError = validationError;
+        }
+        finally
+        {
+            _suppressChanges = false;
+        }
 
         if (IsBool)
             OnPropertyChanged(nameof(BoolValue));
@@ -124,10 +136,16 @@ public sealed partial class FieldViewModel : ViewModelBase
     public void ResetToOriginal()
     {
         _suppressChanges = true;
-        Value = OriginalValue ?? "";
-        IsDirty = false;
-        ValidationError = null;
-        _suppressChanges = false;
+        try
+        {
+            Value = OriginalValue ?? "";
+            IsDirty = false;
+            ValidationError = null;
+        }
+        finally
+        {
+            _suppressChanges = false;
+        }
 
         if (IsBool)
             OnPropertyChanged(nameof(BoolValue));
