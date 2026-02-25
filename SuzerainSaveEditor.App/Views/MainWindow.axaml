@@ -579,13 +579,28 @@
                                         </ItemsControl>
                                     </ScrollViewer>
 
-                                    <!-- field list (leaf nodes) -->
-                                    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                                                  IsVisible="{Binding ShowCategoryFields}">
-                                        <ItemsControl ItemsSource="{Binding SelectedCategoryFields}"
-                                                      ItemTemplate="{StaticResource FieldEditorTemplate}"
-                                                      Padding="8,4" />
-                                    </ScrollViewer>
+                                    <!-- field list (leaf nodes) — ListBox for virtualization -->
+                                    <ListBox ItemsSource="{Binding SelectedCategoryFields}"
+                                             ItemTemplate="{StaticResource FieldEditorTemplate}"
+                                             IsVisible="{Binding ShowCategoryFields}"
+                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             Padding="8,4">
+                                        <ListBox.Styles>
+                                            <Style Selector="ListBoxItem">
+                                                <Setter Property="Padding" Value="0" />
+                                                <Setter Property="Margin" Value="0" />
+                                                <Setter Property="MinHeight" Value="0" />
+                                            </Style>
+                                            <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+                                                <Setter Property="Background" Value="Transparent" />
+                                            </Style>
+                                            <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+                                                <Setter Property="Background" Value="Transparent" />
+                                            </Style>
+                                        </ListBox.Styles>
+                                    </ListBox>
                                 </Panel>
                             </DockPanel>
                         </Grid>
