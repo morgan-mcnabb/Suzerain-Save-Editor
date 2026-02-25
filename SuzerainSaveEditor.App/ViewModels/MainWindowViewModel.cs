@@ -203,11 +203,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     partial void OnSearchTextChanged(string value)
     {
-        _searchDebounce?.Cancel();
-        _searchDebounce?.Dispose();
-        _searchDebounce = new CancellationTokenSource();
-        var token = _searchDebounce.Token;
-        _ = ApplyFilterDebouncedAsync(token);
+        var newCts = new CancellationTokenSource();
+        var old = Interlocked.Exchange(ref _searchDebounce, newCts);
+        old?.Cancel();
+        old?.Dispose();
+        _ = ApplyFilterDebouncedAsync(newCts.Token);
     }
 
     private async Task ApplyFilterDebouncedAsync(CancellationToken token)
@@ -297,9 +297,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     // core loading logic without IsLoading management so callers can control the overlay
     private async Task LoadFileCoreAsync(string path)
     {
-        _searchDebounce?.Cancel();
-        _searchDebounce?.Dispose();
-        _searchDebounce = null;
+        var old = Interlocked.Exchange(ref _searchDebounce, null);
+        old?.Cancel();
+        old?.Dispose();
 
         StatusMessage = "Loading...";
 
@@ -329,9 +329,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     private void ClearLoadedState()
     {
-        _searchDebounce?.Cancel();
-        _searchDebounce?.Dispose();
-        _searchDebounce = null;
+        var oldCts = Interlocked.Exchange(ref _searchDebounce, null);
+        oldCts?.Cancel();
+        oldCts?.Dispose();
 
         _editSession = null;
         _activeSchema = null;
