@@ -663,6 +663,38 @@ public sealed class MainWindowViewModelTests
         ];
     }
 
+    private static IReadOnlyList<FieldDefinition> CreateDiscoveredFieldsWithParentNode()
+    {
+        // generates 35 fields across 2 sub-categories in one namespace,
+        // exceeding SubCategoryThreshold (30) so the grouper creates child nodes
+        var fields = new List<FieldDefinition>();
+        for (var i = 0; i < 20; i++)
+        {
+            fields.Add(new FieldDefinition
+            {
+                Id = $"discovered.var.TestNS.SubA_Field{i:D2}",
+                Path = $"variable:TestNS.SubA_Field{i:D2}",
+                Label = $"SubA Field {i}",
+                Group = FieldGroup.Advanced,
+                Type = FieldType.Bool,
+                Source = FieldSource.Variable
+            });
+        }
+        for (var i = 0; i < 15; i++)
+        {
+            fields.Add(new FieldDefinition
+            {
+                Id = $"discovered.var.TestNS.SubB_Field{i:D2}",
+                Path = $"variable:TestNS.SubB_Field{i:D2}",
+                Label = $"SubB Field {i}",
+                Group = FieldGroup.Advanced,
+                Type = FieldType.Bool,
+                Source = FieldSource.Variable
+            });
+        }
+        return fields;
+    }
+
     private MainWindowViewModel CreateViewModelWithDiscoveredFields(
         IReadOnlyList<FieldDefinition>? discoveredFields = null)
     {
@@ -939,11 +971,10 @@ public sealed class MainWindowViewModelTests
     [Fact]
     public async Task SelectCategory_ParentNode_ShowsCategoryCards()
     {
-        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithParentNode());
         await vm.OpenCommand.ExecuteAsync(null);
 
-        var parentNode = vm.CategoryNodes.FirstOrDefault(n => n.IsParent);
-        if (parentNode is null) return; // skip if no parent nodes in this dataset
+        var parentNode = vm.CategoryNodes.First(n => n.IsParent);
 
         vm.SelectCategory(parentNode);
 
@@ -990,11 +1021,10 @@ public sealed class MainWindowViewModelTests
     [Fact]
     public async Task SelectCategory_ParentNode_AutoExpands()
     {
-        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithParentNode());
         await vm.OpenCommand.ExecuteAsync(null);
 
-        var parentNode = vm.CategoryNodes.FirstOrDefault(n => n.IsParent);
-        if (parentNode is null) return;
+        var parentNode = vm.CategoryNodes.First(n => n.IsParent);
 
         Assert.False(parentNode.IsExpanded);
         vm.SelectCategory(parentNode);
@@ -1003,31 +1033,29 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task SelectCategory_ParentNode_ClickAgainCollapses()
+    public async Task SelectCategory_ParentNode_StaysExpandedOnReselect()
     {
-        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithParentNode());
         await vm.OpenCommand.ExecuteAsync(null);
 
-        var parentNode = vm.CategoryNodes.FirstOrDefault(n => n.IsParent);
-        if (parentNode is null) return;
+        var parentNode = vm.CategoryNodes.First(n => n.IsParent);
 
         vm.SelectCategory(parentNode);
         Assert.True(parentNode.IsExpanded);
 
-        // deselect then re-select to simulate clicking again
+        // deselect then re-select — should stay expanded (not toggle)
         vm.SelectCategory(null);
         vm.SelectCategory(parentNode);
-        Assert.False(parentNode.IsExpanded);
+        Assert.True(parentNode.IsExpanded);
     }
 
     [Fact]
     public async Task NavigateToSubCategory_SelectsTargetNode()
     {
-        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithParentNode());
         await vm.OpenCommand.ExecuteAsync(null);
 
-        var parentNode = vm.CategoryNodes.FirstOrDefault(n => n.IsParent);
-        if (parentNode is null) return;
+        var parentNode = vm.CategoryNodes.First(n => n.IsParent);
 
         vm.SelectCategory(parentNode);
         Assert.NotEmpty(vm.SubCategorySummaries);
@@ -1054,12 +1082,11 @@ public sealed class MainWindowViewModelTests
     [Fact]
     public async Task RevertAll_RefreshesSubCategorySummaryDirtyCounts()
     {
-        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithTurns());
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithParentNode());
         await vm.OpenCommand.ExecuteAsync(null);
 
         // select a parent node to show cards
-        var parentNode = vm.CategoryNodes.FirstOrDefault(n => n.IsParent);
-        if (parentNode is null) return;
+        var parentNode = vm.CategoryNodes.First(n => n.IsParent);
         vm.SelectCategory(parentNode);
         Assert.True(vm.ShowCategoryCards);
 

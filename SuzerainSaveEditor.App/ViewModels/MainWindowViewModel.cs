@@ -240,9 +240,9 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             newValue.IsSelected = true;
 
-            // auto-expand/collapse parent nodes when selected
+            // always expand parent nodes when selected (breadcrumb or tree click)
             if (newValue.IsParent)
-                newValue.IsExpanded = !newValue.IsExpanded;
+                newValue.IsExpanded = true;
         }
 
         PopulateSelectedCategoryContent();
