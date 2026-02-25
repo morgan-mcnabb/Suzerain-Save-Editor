@@ -18,12 +18,14 @@
                     Spacing="8">
             <Button Content="Cancel"
                     Padding="16,8"
+                    IsCancel="True"
                     Click="OnCancel" />
             <Button Content="Discard"
                     Padding="16,8"
                     Click="OnDiscard" />
             <Button Content="Save"
                     Padding="16,8"
+                    IsDefault="True"
                     Classes="accent"
                     Click="OnSave" />
         </StackPanel>
