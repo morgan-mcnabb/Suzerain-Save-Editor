@@ -4,7 +4,7 @@ using SuzerainSaveEditor.Core.Schema;
 namespace SuzerainSaveEditor.App.ViewModels;
 
 // represents a single editable field in the UI with type-specific bindings
-public partial class FieldViewModel : ViewModelBase
+public sealed partial class FieldViewModel : ViewModelBase
 {
     private readonly Action<string, string>? _onValueChanged;
     private bool _suppressChanges;

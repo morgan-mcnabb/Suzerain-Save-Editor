@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace SuzerainSaveEditor.App.ViewModels;
 
 // represents a node in the advanced field category tree (namespace or sub-category)
-public partial class CategoryNodeViewModel : ViewModelBase
+public sealed partial class CategoryNodeViewModel : ViewModelBase
 {
     private readonly List<FieldViewModel> _allFields;
     private readonly List<CategoryNodeViewModel> _allChildren;
