@@ -120,7 +120,6 @@ public partial class CategoryNodeViewModel : ViewModelBase
 
             FilteredCount = TotalCount;
             IsVisible = true;
-            OnPropertyChanged(nameof(HeaderText));
             return true;
         }
 
@@ -144,7 +143,6 @@ public partial class CategoryNodeViewModel : ViewModelBase
         FilteredCount = matchingFieldCount + childFilteredCount;
 
         IsVisible = matchingFieldCount > 0 || visibleChildren.Count > 0;
-        OnPropertyChanged(nameof(HeaderText));
         return IsVisible;
     }
 

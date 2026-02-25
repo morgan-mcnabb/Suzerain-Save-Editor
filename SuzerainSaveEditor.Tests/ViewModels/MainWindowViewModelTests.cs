@@ -233,6 +233,34 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task FieldValueChange_InvalidOnCleanField_NotDirty()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var turnNo = vm.GeneralFields.First(f => f.FieldId == "meta.turnNo");
+        turnNo.Value = "not_a_number";
+
+        Assert.False(turnNo.IsDirty);
+        Assert.False(vm.IsDirty);
+    }
+
+    [Fact]
+    public async Task FieldValueChange_InvalidOnDirtyField_StaysDirty()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        // turnNo has min=1 max=20, original is 5 — use a valid value within range
+        var turnNo = vm.GeneralFields.First(f => f.FieldId == "meta.turnNo");
+        turnNo.Value = "10";
+        Assert.True(turnNo.IsDirty);
+
+        turnNo.Value = "not_a_number";
+        Assert.True(turnNo.IsDirty);
+    }
+
+    [Fact]
     public async Task FieldValueChange_ResetToSameValue_NotDirty()
     {
         var vm = CreateViewModel();
