@@ -402,21 +402,29 @@ public sealed class FieldResolverTests
     }
 
     [Fact]
-    public void WriteValue_Variable_NotFound_ThrowsKeyNotFoundException()
+    public void WriteValue_Variable_NotFound_AddsVariable()
     {
         var doc = CreateTestDocument();
         var field = MakeField("test", "variable:NonExistent.Variable", FieldSource.Variable);
 
-        Assert.Throws<KeyNotFoundException>(() => _resolver.WriteValue(doc, field, "42"));
+        var updated = _resolver.WriteValue(doc, field, "42");
+
+        Assert.Equal(doc.Variables.Count + 1, updated.Variables.Count);
+        var readBack = _resolver.ReadValue(updated, field);
+        Assert.Equal("42", readBack);
     }
 
     [Fact]
-    public void WriteValue_Entity_NotFound_ThrowsKeyNotFoundException()
+    public void WriteValue_Entity_NotFound_AddsEntityUpdate()
     {
         var doc = CreateTestDocument();
-        var field = MakeField("test", "entity:NonExistent.FieldName", FieldSource.EntityUpdate);
+        var field = MakeField("test", "entity:NonExistent.FieldName", FieldSource.EntityUpdate, FieldType.String);
 
-        Assert.Throws<KeyNotFoundException>(() => _resolver.WriteValue(doc, field, "42"));
+        var updated = _resolver.WriteValue(doc, field, "hello");
+
+        Assert.Equal(doc.EntityUpdates.Count + 1, updated.EntityUpdates.Count);
+        var readBack = _resolver.ReadValue(updated, field);
+        Assert.Equal("hello", readBack);
     }
 
 
