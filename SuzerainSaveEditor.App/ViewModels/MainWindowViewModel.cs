@@ -603,9 +603,19 @@ public partial class MainWindowViewModel : ViewModelBase
         };
 
         HasValidationErrors = _validationErrors.Count > 0;
-        ValidationStatusText = HasValidationErrors
-            ? _validationErrors.Values.First()
-            : "Valid";
+        ValidationStatusText = _validationErrors.Count switch
+        {
+            0 => "Valid",
+            1 => FormatSingleValidationError(),
+            _ => $"{_validationErrors.Count} validation errors"
+        };
+    }
+
+    private string FormatSingleValidationError()
+    {
+        var (fieldId, error) = _validationErrors.First();
+        var label = _fieldLookup.TryGetValue(fieldId, out var vm) ? vm.Label : fieldId;
+        return $"{label}: {error}";
     }
 
     internal void ApplyFilter()
