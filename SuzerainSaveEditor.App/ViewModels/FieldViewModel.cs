@@ -72,8 +72,21 @@ public partial class FieldViewModel : ViewModelBase
         FieldType = fieldType;
         Min = min;
         Max = max;
-        Options = options;
         _onValueChanged = onValueChanged;
+
+        // include unknown initial values in the options list so the ComboBox
+        // displays them instead of showing blank
+        if (fieldType == FieldType.Enum
+            && options is not null
+            && initialValue is not null
+            && !options.Contains(initialValue))
+        {
+            Options = [..options, initialValue];
+        }
+        else
+        {
+            Options = options;
+        }
 
         // set backing field directly to skip change notification during init
         _value = initialValue ?? "";

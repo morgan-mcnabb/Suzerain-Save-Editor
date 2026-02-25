@@ -34,6 +34,38 @@ public sealed class FieldViewModelTests
         Assert.Null(vm.OriginalValue);
     }
 
+    [Fact]
+    public void Constructor_Enum_UnknownValue_AppendsToOptions()
+    {
+        var options = new List<string> { "A", "B", "C" };
+        var vm = new FieldViewModel("id", "Label", null,
+            FieldType.Enum, "D", options: options);
+
+        Assert.Equal("D", vm.Value);
+        Assert.Contains("D", vm.Options!);
+        Assert.Equal(4, vm.Options!.Count);
+    }
+
+    [Fact]
+    public void Constructor_Enum_KnownValue_OptionsUnchanged()
+    {
+        var options = new List<string> { "A", "B", "C" };
+        var vm = new FieldViewModel("id", "Label", null,
+            FieldType.Enum, "B", options: options);
+
+        Assert.Equal(options, vm.Options);
+    }
+
+    [Fact]
+    public void Constructor_Enum_NullValue_OptionsUnchanged()
+    {
+        var options = new List<string> { "A", "B" };
+        var vm = new FieldViewModel("id", "Label", null,
+            FieldType.Enum, null, options: options);
+
+        Assert.Equal(options, vm.Options);
+    }
+
     // type flag tests
     [Theory]
     [InlineData(FieldType.Bool, true, false, false, false)]
