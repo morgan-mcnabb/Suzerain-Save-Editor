@@ -161,18 +161,20 @@ public sealed class EditSession : IEditSession
 
     // normalize value to match what a write-then-read round-trip would produce
     // (e.g. "true" → "True", "007" → "7" for variable/metadata ints)
+    // uses TryParse so malformed original data degrades gracefully instead of throwing
     private static string NormalizeValue(FieldDefinition field, string value)
     {
         if (field.Type == FieldType.Bool)
-            return bool.Parse(value).ToString();
+            return bool.TryParse(value, out var b) ? b.ToString() : value;
 
         if (field.Type == FieldType.Int && field.Source is not FieldSource.EntityUpdate)
-            return int.Parse(value, System.Globalization.CultureInfo.InvariantCulture).ToString();
+            return int.TryParse(value, System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture, out var i) ? i.ToString() : value;
 
         if (field.Type == FieldType.Decimal)
-            return double.Parse(value, System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture).ToString("R",
-                System.Globalization.CultureInfo.InvariantCulture);
+            return double.TryParse(value, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var d)
+                ? d.ToString("R", System.Globalization.CultureInfo.InvariantCulture) : value;
 
         return value;
     }

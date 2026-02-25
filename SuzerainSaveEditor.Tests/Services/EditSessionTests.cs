@@ -901,6 +901,61 @@ public sealed class EditSessionTests
         Assert.Equal("4", session.GetValue("sordland.governmentBudget"));
     }
 
+    private EditSession CreateSessionWithMismatchedType(FieldType schemaType, LuaValue actualValue)
+    {
+        var field = new FieldDefinition
+        {
+            Id = "test.mismatched",
+            Path = "variable:TestMismatched",
+            Label = "Mismatched Field",
+            Group = FieldGroup.General,
+            Type = schemaType,
+            Source = FieldSource.Variable
+        };
+        var doc = CreateTestDocument();
+        var vars = doc.Variables.ToList();
+        vars.Add(new LuaVariable("TestMismatched", actualValue));
+        doc = new SaveDocument
+        {
+            Metadata = doc.Metadata,
+            WarSaveData = doc.WarSaveData,
+            Variables = vars,
+            EntityUpdates = doc.EntityUpdates
+        };
+        var schema = new MutableSchemaService(field);
+        return new EditSession(doc, null, schema, _resolver);
+    }
+
+    [Fact]
+    public void SetValue_BoolField_MalformedOriginal_DoesNotThrow()
+    {
+        var session = CreateSessionWithMismatchedType(FieldType.Bool, new LuaValue.Str("garbage"));
+        var result = session.SetValue("test.mismatched", "True");
+
+        Assert.True(result.IsValid);
+        Assert.True(session.IsDirty);
+    }
+
+    [Fact]
+    public void SetValue_IntField_MalformedOriginal_DoesNotThrow()
+    {
+        var session = CreateSessionWithMismatchedType(FieldType.Int, new LuaValue.Str("not_a_number"));
+        var result = session.SetValue("test.mismatched", "42");
+
+        Assert.True(result.IsValid);
+        Assert.True(session.IsDirty);
+    }
+
+    [Fact]
+    public void SetValue_DecimalField_MalformedOriginal_DoesNotThrow()
+    {
+        var session = CreateSessionWithMismatchedType(FieldType.Decimal, new LuaValue.Str("not_a_number"));
+        var result = session.SetValue("test.mismatched", "3.14");
+
+        Assert.True(result.IsValid);
+        Assert.True(session.IsDirty);
+    }
+
     private sealed class MutableSchemaService : ISchemaService
     {
         private readonly Dictionary<string, FieldDefinition> _fields = new();
