@@ -26,7 +26,9 @@ public sealed class SavePathProvider : ISavePathProvider
         // unity persistentDataPath on windows: %AppData%\..\LocalLow\Torpor Games\Suzerain
         var localAppData = Environment.GetFolderPath(
             Environment.SpecialFolder.LocalApplicationData);
-        var appData = Directory.GetParent(localAppData)!.FullName;
+        var appData = Directory.GetParent(localAppData)?.FullName;
+        if (appData is null)
+            return [];
         return [Path.Combine(appData, "LocalLow", Publisher, GameName)];
     }
 
