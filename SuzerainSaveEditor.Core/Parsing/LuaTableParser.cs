@@ -39,7 +39,7 @@ public static class LuaTableParser
             if (keyEnd < 0)
                 throw new FormatException($"Could not find closing '\"]='' for key starting at position {Prefix.Length + keyStart}.");
 
-            var key = body[keyStart..keyEnd].ToString();
+            var key = UnescapeKey(body[keyStart..keyEnd]);
             pos = keyEnd + 3; // skip "]=
 
             // read value
@@ -62,16 +62,43 @@ public static class LuaTableParser
 
     // finds the position of the closing "]= sequence after a key
     // handles keys containing == by looking for "]=  specifically
+    // skips over backslash-escaped characters (e.g. \" or \\)
     private static int FindKeyEnd(ReadOnlySpan<char> body, int start)
     {
         var pos = start;
         while (pos <= body.Length - 3)
         {
+            if (body[pos] == '\\')
+            {
+                pos += 2; // skip escaped character
+                continue;
+            }
             if (body[pos] == '"' && body[pos + 1] == ']' && body[pos + 2] == '=')
                 return pos;
             pos++;
         }
         return -1;
+    }
+
+    private static string UnescapeKey(ReadOnlySpan<char> raw)
+    {
+        if (raw.IndexOf('\\') < 0)
+            return raw.ToString();
+
+        var sb = new System.Text.StringBuilder(raw.Length);
+        for (var i = 0; i < raw.Length; i++)
+        {
+            if (raw[i] == '\\' && i + 1 < raw.Length)
+            {
+                sb.Append(raw[i + 1]);
+                i++; // skip next char
+            }
+            else
+            {
+                sb.Append(raw[i]);
+            }
+        }
+        return sb.ToString();
     }
 
     private static (LuaValue value, int newPos) ReadValue(ReadOnlySpan<char> body, int pos)

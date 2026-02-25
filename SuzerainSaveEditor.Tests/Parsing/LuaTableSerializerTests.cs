@@ -135,6 +135,90 @@ public sealed class LuaTableSerializerTests
     }
 
     [Fact]
+    public void Serialize_KeyWithBackslash_EscapesBackslash()
+    {
+        var variables = new List<LuaVariable>
+        {
+            new("path\\to\\key", new LuaValue.Bool(true))
+        };
+
+        var result = LuaTableSerializer.Serialize(variables);
+
+        Assert.Equal("Variable={[\"path\\\\to\\\\key\"]=true}; ", result);
+    }
+
+    [Fact]
+    public void Serialize_KeyWithQuote_EscapesQuote()
+    {
+        var variables = new List<LuaVariable>
+        {
+            new("say\"hello", new LuaValue.Bool(false))
+        };
+
+        var result = LuaTableSerializer.Serialize(variables);
+
+        Assert.Equal("Variable={[\"say\\\"hello\"]=false}; ", result);
+    }
+
+    [Fact]
+    public void Serialize_KeyWithCloseSequence_EscapesCorrectly()
+    {
+        var variables = new List<LuaVariable>
+        {
+            new("bad\"]=inject", new LuaValue.Int(1))
+        };
+
+        var result = LuaTableSerializer.Serialize(variables);
+
+        Assert.Equal("Variable={[\"bad\\\"]=inject\"]=1}; ", result);
+    }
+
+    [Fact]
+    public void RoundTrip_KeyWithBackslash_PreservesKey()
+    {
+        var variables = new List<LuaVariable>
+        {
+            new("path\\to\\key", new LuaValue.Bool(true))
+        };
+
+        var serialized = LuaTableSerializer.Serialize(variables);
+        var parsed = LuaTableParser.Parse(serialized);
+
+        Assert.Single(parsed);
+        Assert.Equal("path\\to\\key", parsed[0].Key);
+    }
+
+    [Fact]
+    public void RoundTrip_KeyWithQuote_PreservesKey()
+    {
+        var variables = new List<LuaVariable>
+        {
+            new("say\"hello", new LuaValue.Bool(false))
+        };
+
+        var serialized = LuaTableSerializer.Serialize(variables);
+        var parsed = LuaTableParser.Parse(serialized);
+
+        Assert.Single(parsed);
+        Assert.Equal("say\"hello", parsed[0].Key);
+    }
+
+    [Fact]
+    public void RoundTrip_KeyWithCloseSequence_PreservesKey()
+    {
+        var variables = new List<LuaVariable>
+        {
+            new("bad\"]=inject", new LuaValue.Int(1))
+        };
+
+        var serialized = LuaTableSerializer.Serialize(variables);
+        var parsed = LuaTableParser.Parse(serialized);
+
+        Assert.Single(parsed);
+        Assert.Equal("bad\"]=inject", parsed[0].Key);
+    }
+
+    [Fact]
     public void Serialize_NullInput_ThrowsArgumentNullException()
     {
         Assert.Throws<ArgumentNullException>(() => LuaTableSerializer.Serialize(null!));
