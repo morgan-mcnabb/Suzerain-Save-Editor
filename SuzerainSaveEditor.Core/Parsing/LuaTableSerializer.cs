@@ -33,31 +33,12 @@ public static class LuaTableSerializer
 
     private static void AppendEscapedKey(StringBuilder sb, string key)
     {
-        // fast path: no special characters to escape (true for all known save keys)
-        if (!KeyNeedsEscaping(key))
+        if (!LuaEscaping.NeedsEscaping(key))
         {
             sb.Append(key);
             return;
         }
 
-        foreach (var c in key)
-        {
-            switch (c)
-            {
-                case '\\': sb.Append("\\\\"); break;
-                case '"': sb.Append("\\\""); break;
-                default: sb.Append(c); break;
-            }
-        }
-    }
-
-    private static bool KeyNeedsEscaping(string key)
-    {
-        foreach (var c in key)
-        {
-            if (c is '\\' or '"')
-                return true;
-        }
-        return false;
+        LuaEscaping.AppendEscaped(sb, key);
     }
 }
