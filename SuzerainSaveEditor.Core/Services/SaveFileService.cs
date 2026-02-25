@@ -1,3 +1,4 @@
+using System.Text;
 using SuzerainSaveEditor.Core.Models;
 using SuzerainSaveEditor.Core.Parsing;
 
@@ -47,7 +48,7 @@ public sealed class SaveFileService : ISaveFileService
         {
             await using (var fs = new FileStream(tempPath, FileMode.Create, FileAccess.Write,
                 FileShare.None, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan))
-            await using (var writer = new StreamWriter(fs))
+            await using (var writer = new StreamWriter(fs, new UTF8Encoding(false)))
             {
                 await writer.WriteAsync(text);
                 await writer.FlushAsync();
