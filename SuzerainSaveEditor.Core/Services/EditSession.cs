@@ -9,13 +9,22 @@ public sealed class EditSession : IEditSession
 {
     private readonly ISchemaService _schema;
     private readonly IFieldResolver _resolver;
+    private readonly Lock _lock = new();
     private readonly Dictionary<string, FieldEdit> _edits = new();
 
     public string? FilePath { get; }
     public SaveDocument OriginalDocument { get; }
     public SaveDocument CurrentDocument { get; private set; }
-    public bool IsDirty => _edits.Count > 0;
-    public int DirtyCount => _edits.Count;
+
+    public bool IsDirty
+    {
+        get { lock (_lock) return _edits.Count > 0; }
+    }
+
+    public int DirtyCount
+    {
+        get { lock (_lock) return _edits.Count; }
+    }
 
     public EditSession(
         SaveDocument document,
@@ -52,7 +61,8 @@ public sealed class EditSession : IEditSession
     public string? GetValue(string fieldId)
     {
         var field = GetFieldOrThrow(fieldId);
-        return _resolver.ReadValue(CurrentDocument, field);
+        lock (_lock)
+            return _resolver.ReadValue(CurrentDocument, field);
     }
 
     public ValidationResult SetValue(string fieldId, string value)
@@ -70,50 +80,68 @@ public sealed class EditSession : IEditSession
         var normalizedValue = NormalizeValue(field, value);
         var normalizedOriginal = originalValue is not null ? NormalizeValue(field, originalValue) : null;
 
-        // if the normalized written value matches the original, remove the edit
-        if (normalizedValue == normalizedOriginal)
+        lock (_lock)
         {
-            _edits.Remove(fieldId);
-        }
-        else
-        {
-            _edits[fieldId] = new FieldEdit(fieldId, originalValue, value);
-        }
+            // if the normalized written value matches the original, remove the edit
+            if (normalizedValue == normalizedOriginal)
+            {
+                _edits.Remove(fieldId);
+            }
+            else
+            {
+                _edits[fieldId] = new FieldEdit(fieldId, originalValue, value);
+            }
 
-        // apply just this single write to the current document instead of rebuilding from scratch
-        CurrentDocument = _resolver.WriteValue(CurrentDocument, field, value);
+            // apply just this single write to the current document instead of rebuilding from scratch
+            CurrentDocument = _resolver.WriteValue(CurrentDocument, field, value);
+        }
         return ValidationResult.Success;
     }
 
     public void RevertField(string fieldId)
     {
         var field = GetFieldOrThrow(fieldId);
-        if (_edits.TryGetValue(fieldId, out var edit))
+        lock (_lock)
         {
-            _edits.Remove(fieldId);
-            // write the original value back incrementally instead of full rebuild
-            if (edit.OldValue is not null)
-                CurrentDocument = _resolver.WriteValue(CurrentDocument, field, edit.OldValue);
-            else
-                RebuildCurrentDocument();
+            if (_edits.TryGetValue(fieldId, out var edit))
+            {
+                _edits.Remove(fieldId);
+                // write the original value back incrementally instead of full rebuild
+                if (edit.OldValue is not null)
+                    CurrentDocument = _resolver.WriteValue(CurrentDocument, field, edit.OldValue);
+                else
+                    RebuildCurrentDocument();
+            }
         }
     }
 
     public void RevertAll()
     {
-        _edits.Clear();
-        CurrentDocument = new SaveDocument
+        // build replacement document before clearing edits so state remains
+        // consistent if an exception occurs during construction
+        var reverted = new SaveDocument
         {
             Metadata = OriginalDocument.Metadata,
             WarSaveData = (JsonObject)OriginalDocument.WarSaveData.DeepClone(),
             Variables = OriginalDocument.Variables,
             EntityUpdates = OriginalDocument.EntityUpdates
         };
+        lock (_lock)
+        {
+            _edits.Clear();
+            CurrentDocument = reverted;
+        }
     }
 
-    public bool IsFieldDirty(string fieldId) => _edits.ContainsKey(fieldId);
+    public bool IsFieldDirty(string fieldId)
+    {
+        lock (_lock) return _edits.ContainsKey(fieldId);
+    }
 
-    public IReadOnlyCollection<FieldEdit> GetDirtyFields() => _edits.Values;
+    public IReadOnlyCollection<FieldEdit> GetDirtyFields()
+    {
+        lock (_lock) return _edits.Values.ToList();
+    }
 
     public ValidationResult ValidateField(string fieldId, string value)
     {
@@ -123,7 +151,10 @@ public sealed class EditSession : IEditSession
 
     public ValidationResult ValidateAll()
     {
-        foreach (var edit in _edits.Values)
+        List<FieldEdit> snapshot;
+        lock (_lock) snapshot = [.. _edits.Values];
+
+        foreach (var edit in snapshot)
         {
             var field = _schema.GetById(edit.FieldId);
             if (field is null)
@@ -135,6 +166,7 @@ public sealed class EditSession : IEditSession
         return ValidationResult.Success;
     }
 
+    // caller must hold _lock
     private void RebuildCurrentDocument()
     {
         var doc = new SaveDocument

@@ -956,6 +956,120 @@ public sealed class EditSessionTests
         Assert.True(session.IsDirty);
     }
 
+    [Fact]
+    public void GetDirtyFields_ReturnsSnapshot_NotLiveView()
+    {
+        var session = CreateSession();
+        session.SetValue("sordland.governmentBudget", "8");
+
+        var snapshot = session.GetDirtyFields();
+        Assert.Single(snapshot);
+
+        // further edit should not affect the previously returned snapshot
+        session.SetValue("sordland.economyTaxation", "5");
+
+        Assert.Single(snapshot);
+    }
+
+    [Fact]
+    public async Task ConcurrentSetValue_DoesNotCorruptState()
+    {
+        var session = CreateSession();
+        var fieldIds = new[]
+        {
+            "sordland.opinionOldGuard",
+            "sordland.opinionReformist",
+            "sordland.opinionNationalist",
+            "sordland.opinionBluds",
+            "sordland.opinionMilitary",
+            "sordland.opinionOligarchs",
+        };
+
+        var barrier = new Barrier(fieldIds.Length);
+        var tasks = fieldIds.Select(id => Task.Run(() =>
+        {
+            barrier.SignalAndWait();
+            for (var i = 0; i < 100; i++)
+                session.SetValue(id, (i + 1).ToString());
+        })).ToArray();
+
+        await Task.WhenAll(tasks);
+
+        // all fields should have their final value and be marked dirty
+        foreach (var id in fieldIds)
+        {
+            Assert.Equal("100", session.GetValue(id));
+            Assert.True(session.IsFieldDirty(id));
+        }
+        Assert.Equal(fieldIds.Length, session.DirtyCount);
+    }
+
+    [Fact]
+    public async Task ConcurrentSetValueAndRevertAll_DoesNotThrow()
+    {
+        var session = CreateSession();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+
+        var writer = Task.Run(() =>
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                session.SetValue("sordland.governmentBudget", "8");
+                session.SetValue("sordland.economyTaxation", "5");
+            }
+        });
+
+        var reverter = Task.Run(() =>
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                session.RevertAll();
+            }
+        });
+
+        var reader = Task.Run(() =>
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                _ = session.IsDirty;
+                _ = session.DirtyCount;
+                _ = session.GetDirtyFields();
+            }
+        });
+
+        await Task.WhenAll(writer, reverter, reader);
+        // no exceptions thrown — state may vary but access is safe
+    }
+
+    [Fact]
+    public async Task ConcurrentGetDirtyFields_DoesNotThrow()
+    {
+        var session = CreateSession();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+
+        var writer = Task.Run(() =>
+        {
+            var toggle = true;
+            while (!cts.IsCancellationRequested)
+            {
+                session.SetValue("sordland.governmentBudget", toggle ? "8" : "4");
+                toggle = !toggle;
+            }
+        });
+
+        var reader = Task.Run(() =>
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                var dirty = session.GetDirtyFields();
+                // iterating the snapshot should never throw
+                foreach (var _ in dirty) { }
+            }
+        });
+
+        await Task.WhenAll(writer, reader);
+    }
+
     private sealed class MutableSchemaService : ISchemaService
     {
         private readonly Dictionary<string, FieldDefinition> _fields = new();
