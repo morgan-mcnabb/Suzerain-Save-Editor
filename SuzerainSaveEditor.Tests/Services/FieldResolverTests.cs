@@ -421,6 +421,46 @@ public sealed class FieldResolverTests
 
 
     [Fact]
+    public void WriteValue_Metadata_InvalidInt_ThrowsFormatException()
+    {
+        var doc = CreateTestDocument();
+        var field = MakeField("test", "meta:turnNo", FieldSource.Metadata);
+
+        var ex = Assert.Throws<FormatException>(() => _resolver.WriteValue(doc, field, "abc"));
+        Assert.Contains("turnNo", ex.Message);
+    }
+
+    [Fact]
+    public void WriteValue_Metadata_InvalidBool_ThrowsFormatException()
+    {
+        var doc = CreateTestDocument();
+        var field = MakeField("test", "meta:isTorporModeOn", FieldSource.Metadata, FieldType.Bool);
+
+        var ex = Assert.Throws<FormatException>(() => _resolver.WriteValue(doc, field, "maybe"));
+        Assert.Contains("isTorporModeOn", ex.Message);
+    }
+
+    [Fact]
+    public void WriteValue_Variable_InvalidBool_ThrowsFormatException()
+    {
+        var doc = CreateTestDocument();
+        var field = MakeField("test", "variable:BaseGame.ConstitutionReform", FieldSource.Variable, FieldType.Bool);
+
+        var ex = Assert.Throws<FormatException>(() => _resolver.WriteValue(doc, field, "maybe"));
+        Assert.Contains("variable", ex.Message);
+    }
+
+    [Fact]
+    public void WriteValue_Variable_InvalidInt_ThrowsFormatException()
+    {
+        var doc = CreateTestDocument();
+        var field = MakeField("test", "variable:BaseGame.GovernmentBudget", FieldSource.Variable);
+
+        var ex = Assert.Throws<FormatException>(() => _resolver.WriteValue(doc, field, "xyz"));
+        Assert.Contains("variable", ex.Message);
+    }
+
+    [Fact]
     public void ReadValue_BoolField_UnparseableValue_ReturnsRawValue()
     {
         var doc = new SaveDocument

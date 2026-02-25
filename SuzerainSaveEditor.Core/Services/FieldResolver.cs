@@ -117,16 +117,16 @@ public sealed class FieldResolver : IFieldResolver
 
         var newMeta = property switch
         {
-            "saveFileType" => meta with { SaveFileType = int.Parse(value, CultureInfo.InvariantCulture) },
+            "saveFileType" => meta with { SaveFileType = ParseInt(value, property) },
             "campaignName" => meta with { CampaignName = value },
             "currentStoryPack" => meta with { CurrentStoryPack = value },
-            "turnNo" => meta with { TurnNo = int.Parse(value, CultureInfo.InvariantCulture) },
+            "turnNo" => meta with { TurnNo = ParseInt(value, property) },
             "saveFileName" => meta with { SaveFileName = value },
-            "sceneBuildIndex" => meta with { SceneBuildIndex = int.Parse(value, CultureInfo.InvariantCulture) },
+            "sceneBuildIndex" => meta with { SceneBuildIndex = ParseInt(value, property) },
             "lastModified" => meta with { LastModified = value },
             "version" => meta with { Version = value },
-            "isVersionMismatched" => meta with { IsVersionMismatched = bool.Parse(value) },
-            "isTorporModeOn" => meta with { IsTorporModeOn = bool.Parse(value) },
+            "isVersionMismatched" => meta with { IsVersionMismatched = ParseBool(value, property) },
+            "isTorporModeOn" => meta with { IsTorporModeOn = ParseBool(value, property) },
             "notes" => meta with { Notes = value },
             _ => throw new ArgumentException($"Unknown metadata property: {property}")
         };
@@ -136,12 +136,26 @@ public sealed class FieldResolver : IFieldResolver
 
     private static LuaValue ConvertToLuaValue(FieldType type, string value) => type switch
     {
-        FieldType.Bool => new LuaValue.Bool(bool.Parse(value)),
-        FieldType.Int => new LuaValue.Int(int.Parse(value, CultureInfo.InvariantCulture)),
+        FieldType.Bool => new LuaValue.Bool(ParseBool(value, "variable")),
+        FieldType.Int => new LuaValue.Int(ParseInt(value, "variable")),
         FieldType.Decimal => new LuaValue.Num(value),
         FieldType.String or FieldType.Enum => new LuaValue.Str(value),
         _ => throw new ArgumentOutOfRangeException(nameof(type), $"Unknown field type: {type}")
     };
+
+    private static int ParseInt(string value, string property)
+    {
+        if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result))
+            throw new FormatException($"Cannot convert '{value}' to int for metadata property '{property}'.");
+        return result;
+    }
+
+    private static bool ParseBool(string value, string property)
+    {
+        if (!bool.TryParse(value, out var result))
+            throw new FormatException($"Cannot convert '{value}' to bool for metadata property '{property}'.");
+        return result;
+    }
 
     private static string StripPrefix(string path, string prefix)
     {
