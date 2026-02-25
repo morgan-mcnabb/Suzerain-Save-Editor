@@ -180,7 +180,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    private bool CanSave() => IsDirty && IsFileLoaded;
+    private bool CanSave() => IsDirty && IsFileLoaded && !HasValidationErrors;
 
     [RelayCommand(CanExecute = nameof(CanRevert))]
     private void RevertAll()
@@ -227,6 +227,11 @@ public partial class MainWindowViewModel : ViewModelBase
         SaveCommand.NotifyCanExecuteChanged();
         RevertAllCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(WindowTitle));
+    }
+
+    partial void OnHasValidationErrorsChanged(bool value)
+    {
+        SaveCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnSelectedCategoryChanged(CategoryNodeViewModel? oldValue, CategoryNodeViewModel? newValue)

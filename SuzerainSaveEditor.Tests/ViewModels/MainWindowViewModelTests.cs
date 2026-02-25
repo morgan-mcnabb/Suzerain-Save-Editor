@@ -360,6 +360,40 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task SaveCommand_DisabledWhenDirtyWithValidationErrors()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        // make a valid edit so the session is dirty
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        Assert.True(vm.IsDirty);
+
+        // introduce a validation error
+        var turnNo = vm.GeneralFields.First(f => f.FieldId == "meta.turnNo");
+        turnNo.Value = "not_a_number";
+
+        Assert.True(vm.HasValidationErrors);
+        Assert.False(vm.SaveCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task SaveCommand_ReenabledWhenValidationErrorCleared()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+
+        var turnNo = vm.GeneralFields.First(f => f.FieldId == "meta.turnNo");
+        turnNo.Value = "not_a_number";
+        Assert.False(vm.SaveCommand.CanExecute(null));
+
+        turnNo.Value = "10";
+        Assert.True(vm.SaveCommand.CanExecute(null));
+    }
+
+    [Fact]
     public async Task SaveCommand_InvokesSaveService()
     {
         var fakeSave = new FakeSaveFileService(CreateTestDocument());
