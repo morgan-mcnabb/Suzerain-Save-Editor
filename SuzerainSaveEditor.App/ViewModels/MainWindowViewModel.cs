@@ -385,13 +385,10 @@ public partial class MainWindowViewModel : ViewModelBase
         // build hierarchical categories
         var categories = AdvancedFieldGrouper.GroupFieldsHierarchical(advancedDefs);
 
-        // map FieldDefinition → FieldViewModel for quick lookup
-        var vmLookup = _allAdvancedFields.ToDictionary(vm => vm.FieldId, StringComparer.Ordinal);
-
         // convert FieldCategory tree → CategoryNodeViewModel tree
         foreach (var category in categories)
         {
-            var node = BuildCategoryNode(category, vmLookup, parent: null);
+            var node = BuildCategoryNode(category, _fieldLookup, parent: null);
             _allCategoryNodes.Add(node);
             IndexCategoryNode(node);
         }
@@ -511,6 +508,10 @@ public partial class MainWindowViewModel : ViewModelBase
         var fieldVm = FindFieldViewModel(fieldId);
         if (fieldVm is null) return;
 
+        // always sync dirty indicator from session state — validation failure
+        // doesn't modify the edit, but the indicator should still be consistent
+        fieldVm.IsDirty = _editSession.IsFieldDirty(fieldId);
+
         if (!result.IsValid)
         {
             fieldVm.ValidationError = result.Error;
@@ -519,7 +520,6 @@ public partial class MainWindowViewModel : ViewModelBase
         else
         {
             fieldVm.ValidationError = null;
-            fieldVm.IsDirty = _editSession.IsFieldDirty(fieldId);
             _validationErrors.Remove(fieldId);
         }
 
