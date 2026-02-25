@@ -12,7 +12,7 @@ public static class LuaTableSerializer
     {
         ArgumentNullException.ThrowIfNull(variables);
 
-        var sb = new StringBuilder();
+        var sb = new StringBuilder(variables.Count * 64 + Prefix.Length + Suffix.Length);
         sb.Append(Prefix);
 
         for (var i = 0; i < variables.Count; i++)

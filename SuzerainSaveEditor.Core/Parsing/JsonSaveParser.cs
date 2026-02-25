@@ -72,7 +72,8 @@ public sealed class JsonSaveParser : ISaveParser
             ["entityUpdates"] = BuildEntityUpdatesArray(document.EntityUpdates)
         };
 
-        using var stream = new MemoryStream();
+        var estimatedSize = document.Variables.Count * 64 + document.EntityUpdates.Count * 128 + 4096;
+        using var stream = new MemoryStream(estimatedSize);
         using var writer = new Utf8JsonWriter(stream, WriterOptions);
         root.WriteTo(writer);
         writer.Flush();
