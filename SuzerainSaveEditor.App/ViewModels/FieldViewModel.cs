@@ -8,6 +8,7 @@ public partial class FieldViewModel : ViewModelBase
 {
     private readonly Action<string, string>? _onValueChanged;
     private bool _suppressChanges;
+    private bool _suppressBoolNotify;
 
     public string FieldId { get; }
     public string Label { get; }
@@ -44,7 +45,11 @@ public partial class FieldViewModel : ViewModelBase
         {
             var str = value.ToString();
             if (Value != str)
+            {
+                _suppressBoolNotify = true;
                 Value = str;
+                _suppressBoolNotify = false;
+            }
         }
     }
 
@@ -80,7 +85,7 @@ public partial class FieldViewModel : ViewModelBase
         if (_suppressChanges) return;
         _onValueChanged?.Invoke(FieldId, value);
 
-        if (IsBool)
+        if (IsBool && !_suppressBoolNotify)
             OnPropertyChanged(nameof(BoolValue));
     }
 

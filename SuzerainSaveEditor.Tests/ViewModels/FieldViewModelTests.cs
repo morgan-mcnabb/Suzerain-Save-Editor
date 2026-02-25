@@ -244,6 +244,43 @@ public sealed class FieldViewModelTests
     }
 
     [Fact]
+    public void BoolValue_Setter_DoesNotRaiseRedundantBoolValueNotification()
+    {
+        var vm = new FieldViewModel("id", "Label", null, FieldType.Bool, "False");
+        var count = 0;
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(FieldViewModel.BoolValue))
+                count++;
+        };
+
+        vm.BoolValue = true;
+
+        // when the change originates from BoolValue setter (i.e. the ToggleSwitch),
+        // no BoolValue notification should fire — the control already knows the value
+        Assert.Equal(0, count);
+        Assert.Equal("True", vm.Value);
+    }
+
+    [Fact]
+    public void DirectValueChange_OnBoolField_StillRaisesBoolValueNotification()
+    {
+        var vm = new FieldViewModel("id", "Label", null, FieldType.Bool, "False");
+        var count = 0;
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(FieldViewModel.BoolValue))
+                count++;
+        };
+
+        vm.Value = "True";
+
+        // when Value is set directly (not through BoolValue), the notification must fire
+        // so the ToggleSwitch picks up the change
+        Assert.Equal(1, count);
+    }
+
+    [Fact]
     public void ResetToOriginal_Bool_RaisesBoolValuePropertyChanged()
     {
         var vm = new FieldViewModel("id", "Label", null, FieldType.Bool, "True");

@@ -58,11 +58,12 @@ public sealed class EditSession : IEditSession
 
         var originalValue = _resolver.ReadValue(OriginalDocument, field);
 
-        // normalize directly instead of round-tripping through a throwaway document
+        // normalize both sides so semantically equal values (e.g. "1.0" vs "1E+00") match
         var normalizedValue = NormalizeValue(field, value);
+        var normalizedOriginal = originalValue is not null ? NormalizeValue(field, originalValue) : null;
 
         // if the normalized written value matches the original, remove the edit
-        if (normalizedValue == originalValue)
+        if (normalizedValue == normalizedOriginal)
         {
             _edits.Remove(fieldId);
         }
@@ -147,6 +148,11 @@ public sealed class EditSession : IEditSession
 
         if (field.Type == FieldType.Int && field.Source is not FieldSource.EntityUpdate)
             return int.Parse(value, System.Globalization.CultureInfo.InvariantCulture).ToString();
+
+        if (field.Type == FieldType.Decimal)
+            return double.Parse(value, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture).ToString("R",
+                System.Globalization.CultureInfo.InvariantCulture);
 
         return value;
     }

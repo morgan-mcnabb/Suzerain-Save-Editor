@@ -49,6 +49,31 @@ public sealed class EditSessionTests
         return new EditSession(CreateTestDocument(), null, schema, _resolver);
     }
 
+    private EditSession CreateSessionWithDecimalNum(string rawValue)
+    {
+        var field = new FieldDefinition
+        {
+            Id = "test.decimal",
+            Path = "variable:TestDecimal",
+            Label = "Test Decimal",
+            Group = FieldGroup.General,
+            Type = FieldType.Decimal,
+            Source = FieldSource.Variable
+        };
+        var doc = CreateTestDocument();
+        var vars = doc.Variables.ToList();
+        vars.Add(new LuaVariable("TestDecimal", new LuaValue.Num(rawValue)));
+        doc = new SaveDocument
+        {
+            Metadata = doc.Metadata,
+            WarSaveData = doc.WarSaveData,
+            Variables = vars,
+            EntityUpdates = doc.EntityUpdates
+        };
+        var schema = new MutableSchemaService(field);
+        return new EditSession(doc, null, schema, _resolver);
+    }
+
     // test helper that replaces a single field by id in the wrapped schema
     private sealed class OverridingSchemaService(ISchemaService inner, FieldDefinition overrideField) : ISchemaService
     {
@@ -646,7 +671,37 @@ public sealed class EditSessionTests
         Assert.False(session.IsDirty);
     }
 
+    [Fact]
+    public void SetValue_DecimalScientificNotationSameAsOriginal_NotDirty()
+    {
+        var session = CreateSessionWithDecimalNum("4E+00");
+        // original is "4E+00", typing "4" is numerically equal
+        var result = session.SetValue("test.decimal", "4");
 
+        Assert.True(result.IsValid);
+        Assert.False(session.IsDirty);
+    }
+
+    [Fact]
+    public void SetValue_DecimalDifferentFormatSameAsOriginal_NotDirty()
+    {
+        var session = CreateSessionWithDecimalNum("1.0");
+        // original is "1.0", typing "1" is numerically equal
+        var result = session.SetValue("test.decimal", "1");
+
+        Assert.True(result.IsValid);
+        Assert.False(session.IsDirty);
+    }
+
+    [Fact]
+    public void SetValue_DecimalDifferentValue_IsDirty()
+    {
+        var session = CreateSessionWithDecimalNum("4E+00");
+        var result = session.SetValue("test.decimal", "5");
+
+        Assert.True(result.IsValid);
+        Assert.True(session.IsDirty);
+    }
 
     [Fact]
     public void IsFieldDirty_UneditedField_ReturnsFalse()
