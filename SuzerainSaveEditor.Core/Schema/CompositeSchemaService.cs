@@ -15,11 +15,13 @@ public sealed class CompositeSchemaService : ISchemaService
 
         _allFields = baseSchema.GetAll().Concat(discoveredFields).ToList();
 
-        var discoveredDuplicates = discoveredFields
-            .GroupBy(f => f.Id)
-            .Where(g => g.Count() > 1)
-            .Select(g => g.Key)
-            .ToList();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var discoveredDuplicates = new List<string>();
+        foreach (var f in discoveredFields)
+        {
+            if (!seen.Add(f.Id))
+                discoveredDuplicates.Add(f.Id);
+        }
         if (discoveredDuplicates.Count > 0)
             throw new InvalidOperationException(
                 $"Duplicate field IDs within discovered fields: {string.Join(", ", discoveredDuplicates)}");
