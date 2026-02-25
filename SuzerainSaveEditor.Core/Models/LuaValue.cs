@@ -10,7 +10,7 @@ public abstract record LuaValue
 
     public sealed record Int(int Value) : LuaValue
     {
-        public override string ToLuaString() => Value.ToString();
+        public override string ToLuaString() => Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
     }
 
     public sealed record Str(string Value) : LuaValue
