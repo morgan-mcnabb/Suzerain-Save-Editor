@@ -6,7 +6,7 @@ using SuzerainSaveEditor.Core.Services;
 
 namespace SuzerainSaveEditor.App.ViewModels;
 
-public partial class MainWindowViewModel : ViewModelBase
+public sealed partial class MainWindowViewModel : ViewModelBase
 {
     private readonly ISaveFileService _saveFileService;
     private readonly ISchemaService _schemaService;
@@ -297,6 +297,10 @@ public partial class MainWindowViewModel : ViewModelBase
     // core loading logic without IsLoading management so callers can control the overlay
     private async Task LoadFileCoreAsync(string path)
     {
+        _searchDebounce?.Cancel();
+        _searchDebounce?.Dispose();
+        _searchDebounce = null;
+
         StatusMessage = "Loading...";
 
         var document = await _saveFileService.OpenAsync(path);
