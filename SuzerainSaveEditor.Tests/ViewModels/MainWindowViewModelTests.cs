@@ -1864,6 +1864,176 @@ public sealed class MainWindowViewModelTests
         Assert.Empty(vm.RecentFiles);
     }
 
+    [Fact]
+    public async Task SaveCommand_WithSummaryDialogConfirmed_SavesSuccessfully()
+    {
+        var fakeSave = new FakeSaveFileService(CreateTestDocument());
+        var vm = CreateViewModel(saveFileService: fakeSave);
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.ShowChangeSummaryDialog = _ => Task.FromResult(true);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Single(fakeSave.SaveCalls);
+        Assert.False(vm.IsDirty);
+    }
+
+    [Fact]
+    public async Task SaveCommand_WithSummaryDialogCancelled_DoesNotSave()
+    {
+        var fakeSave = new FakeSaveFileService(CreateTestDocument());
+        var vm = CreateViewModel(saveFileService: fakeSave);
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.ShowChangeSummaryDialog = _ => Task.FromResult(false);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Empty(fakeSave.SaveCalls);
+        Assert.True(vm.IsDirty);
+        Assert.Equal("Save cancelled", vm.StatusMessage);
+    }
+
+    [Fact]
+    public async Task SaveCommand_WithSummaryDialogCancelled_IsLoadingFalse()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.ShowChangeSummaryDialog = _ => Task.FromResult(false);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.False(vm.IsLoading);
+    }
+
+    [Fact]
+    public async Task SaveCommand_WithoutSummaryDialog_SavesWithoutPrompt()
+    {
+        var fakeSave = new FakeSaveFileService(CreateTestDocument());
+        var vm = CreateViewModel(saveFileService: fakeSave);
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        // ShowChangeSummaryDialog is null by default
+        Assert.Null(vm.ShowChangeSummaryDialog);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Single(fakeSave.SaveCalls);
+    }
+
+    [Fact]
+    public async Task SaveCommand_SummaryDialogReceivesCorrectItems()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        IReadOnlyList<ChangeSummaryItemViewModel>? receivedItems = null;
+        vm.ShowChangeSummaryDialog = items =>
+        {
+            receivedItems = items;
+            return Task.FromResult(true);
+        };
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "NEW_NAME";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.NotNull(receivedItems);
+        Assert.Single(receivedItems);
+        Assert.Equal("Campaign Name", receivedItems[0].Label);
+        Assert.Equal("PRESIDENT", receivedItems[0].OldValue);
+        Assert.Equal("NEW_NAME", receivedItems[0].NewValue);
+    }
+
+    [Fact]
+    public async Task SaveCommand_SummaryDialogReceivesMultipleItems_SortedByLabel()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        IReadOnlyList<ChangeSummaryItemViewModel>? receivedItems = null;
+        vm.ShowChangeSummaryDialog = items =>
+        {
+            receivedItems = items;
+            return Task.FromResult(true);
+        };
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "NEW_NAME";
+        vm.GeneralFields.First(f => f.FieldId == "meta.saveFileName").Value = "changed_save";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.NotNull(receivedItems);
+        Assert.Equal(2, receivedItems.Count);
+
+        // verify sorted alphabetically by label
+        Assert.True(
+            string.Compare(receivedItems[0].Label, receivedItems[1].Label, StringComparison.OrdinalIgnoreCase) <= 0,
+            $"Expected '{receivedItems[0].Label}' before '{receivedItems[1].Label}' alphabetically");
+    }
+
+    [Fact]
+    public async Task BuildChangeSummaryItems_NoEdits_ReturnsEmpty()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var items = vm.BuildChangeSummaryItems();
+
+        Assert.Empty(items);
+    }
+
+    [Fact]
+    public async Task BuildChangeSummaryItems_WithEdits_MapsLabelAndType()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+
+        var items = vm.BuildChangeSummaryItems();
+
+        Assert.Single(items);
+        var item = items[0];
+        Assert.Equal("Campaign Name", item.Label);
+        Assert.Equal("String", item.FieldType);
+        Assert.Equal("PRESIDENT", item.OldValue);
+        Assert.Equal("CHANGED", item.NewValue);
+    }
+
+    [Fact]
+    public async Task BuildChangeSummaryItems_BoolField_HasCorrectType()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var boolField = vm.SordlandFields.FirstOrDefault(f => f.FieldType == FieldType.Bool);
+        if (boolField is null) return; // skip if no bool fields in sordland
+
+        boolField.Value = (boolField.Value == "True") ? "False" : "True";
+
+        var items = vm.BuildChangeSummaryItems();
+        var match = items.FirstOrDefault(i => i.Label == boolField.Label);
+
+        Assert.NotNull(match);
+        Assert.Equal("Bool", match.FieldType);
+    }
+
+    [Fact]
+    public void BuildChangeSummaryItems_NoSession_ReturnsEmpty()
+    {
+        var vm = CreateViewModel();
+
+        // no file loaded, so no session
+        var items = vm.BuildChangeSummaryItems();
+
+        Assert.Empty(items);
+    }
+
     // test doubles
     private sealed class FakeSaveFileService : ISaveFileService
     {
