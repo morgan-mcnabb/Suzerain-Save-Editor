@@ -73,14 +73,16 @@ public sealed class MainWindowViewModelTests
     private MainWindowViewModel CreateViewModel(
         ISaveFileService? saveFileService = null,
         IFileDialogService? fileDialogService = null,
-        IFieldDiscoveryService? discoveryService = null)
+        IFieldDiscoveryService? discoveryService = null,
+        IRecentFilesService? recentFilesService = null)
     {
         var doc = CreateTestDocument();
         saveFileService ??= new FakeSaveFileService(doc);
         fileDialogService ??= new FakeFileDialogService("C:\\saves\\test.json");
         discoveryService ??= new FakeFieldDiscoveryService();
 
-        return new MainWindowViewModel(saveFileService, _schema, _resolver, fileDialogService, discoveryService);
+        return new MainWindowViewModel(saveFileService, _schema, _resolver, fileDialogService, discoveryService,
+            recentFilesService: recentFilesService);
     }
 
     // helper to find a field across all category nodes (recursive)
@@ -1704,6 +1706,164 @@ public sealed class MainWindowViewModelTests
         Assert.False(vm.IsDirty);
     }
 
+    [Fact]
+    public async Task LoadRecentFilesAsync_NullService_DoesNotThrow()
+    {
+        var vm = CreateViewModel();
+
+        await vm.LoadRecentFilesAsync();
+
+        Assert.Empty(vm.RecentFiles);
+        Assert.False(vm.HasRecentFiles);
+    }
+
+    [Fact]
+    public async Task LoadRecentFilesAsync_EmptyList_HasRecentFilesFalse()
+    {
+        var recentService = new FakeRecentFilesService();
+        var vm = CreateViewModel(recentFilesService: recentService);
+
+        await vm.LoadRecentFilesAsync();
+
+        Assert.Empty(vm.RecentFiles);
+        Assert.False(vm.HasRecentFiles);
+    }
+
+    [Fact]
+    public async Task LoadRecentFilesAsync_WithEntries_PopulatesCollection()
+    {
+        var recentService = new FakeRecentFilesService();
+        await recentService.AddAsync("C:\\saves\\one.json");
+        await recentService.AddAsync("C:\\saves\\two.json");
+        var vm = CreateViewModel(recentFilesService: recentService);
+
+        await vm.LoadRecentFilesAsync();
+
+        Assert.Equal(2, vm.RecentFiles.Count);
+        Assert.Equal("two.json", vm.RecentFiles[0].DisplayName);
+        Assert.Equal("one.json", vm.RecentFiles[1].DisplayName);
+    }
+
+    [Fact]
+    public async Task LoadRecentFilesAsync_WithEntries_HasRecentFilesTrue()
+    {
+        var recentService = new FakeRecentFilesService();
+        await recentService.AddAsync("C:\\saves\\one.json");
+        var vm = CreateViewModel(recentFilesService: recentService);
+
+        await vm.LoadRecentFilesAsync();
+
+        Assert.True(vm.HasRecentFiles);
+    }
+
+    [Fact]
+    public async Task LoadRecentFilesAsync_FormatsLastOpened()
+    {
+        var recentService = new FakeRecentFilesService();
+        await recentService.AddAsync("C:\\saves\\one.json");
+        var vm = CreateViewModel(recentFilesService: recentService);
+
+        await vm.LoadRecentFilesAsync();
+
+        Assert.False(string.IsNullOrWhiteSpace(vm.RecentFiles[0].LastOpened));
+    }
+
+    [Fact]
+    public async Task OpenCommand_RecordsToRecentFiles()
+    {
+        var recentService = new FakeRecentFilesService();
+        var vm = CreateViewModel(recentFilesService: recentService);
+
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        Assert.Contains("C:\\saves\\test.json", recentService.AddedPaths);
+    }
+
+    [Fact]
+    public async Task OpenRecentFileCommand_LoadsFile()
+    {
+        var recentService = new FakeRecentFilesService();
+        var vm = CreateViewModel(recentFilesService: recentService);
+        var entry = new RecentFileViewModel("C:\\saves\\test.json", "test.json", "Jan 1, 2025 12:00 PM");
+
+        await vm.OpenRecentFileCommand.ExecuteAsync(entry);
+
+        Assert.True(vm.IsFileLoaded);
+        Assert.Equal("C:\\saves\\test.json", vm.FilePath);
+    }
+
+    [Fact]
+    public async Task OpenRecentFileCommand_LoadFailure_ShowsError()
+    {
+        var failService = new FailOnSecondOpenSaveFileService(CreateTestDocument());
+        var recentService = new FakeRecentFilesService();
+        var vm = CreateViewModel(saveFileService: failService, recentFilesService: recentService);
+
+        await vm.OpenCommand.ExecuteAsync(null);
+        Assert.True(vm.IsFileLoaded);
+
+        var entry = new RecentFileViewModel("C:\\saves\\test.json", "test.json", "Jan 1, 2025 12:00 PM");
+        await vm.OpenRecentFileCommand.ExecuteAsync(entry);
+
+        Assert.False(vm.IsFileLoaded);
+        Assert.Contains("Failed to load", vm.StatusMessage);
+    }
+
+    [Fact]
+    public async Task ClearRecentFilesCommand_ClearsList()
+    {
+        var recentService = new FakeRecentFilesService();
+        await recentService.AddAsync("C:\\saves\\one.json");
+        var vm = CreateViewModel(recentFilesService: recentService);
+        await vm.LoadRecentFilesAsync();
+        Assert.NotEmpty(vm.RecentFiles);
+
+        await vm.ClearRecentFilesCommand.ExecuteAsync(null);
+
+        Assert.Empty(vm.RecentFiles);
+        Assert.False(vm.HasRecentFiles);
+    }
+
+    [Fact]
+    public async Task RemoveRecentFileCommand_RemovesEntry()
+    {
+        var recentService = new FakeRecentFilesService();
+        await recentService.AddAsync("C:\\saves\\one.json");
+        await recentService.AddAsync("C:\\saves\\two.json");
+        var vm = CreateViewModel(recentFilesService: recentService);
+        await vm.LoadRecentFilesAsync();
+        Assert.Equal(2, vm.RecentFiles.Count);
+
+        var entry = new RecentFileViewModel("C:\\saves\\one.json", "one.json", "Jan 1, 2025 12:00 PM");
+        await vm.RemoveRecentFileCommand.ExecuteAsync(entry);
+
+        Assert.Single(vm.RecentFiles);
+        Assert.Equal("two.json", vm.RecentFiles[0].DisplayName);
+    }
+
+    [Fact]
+    public async Task OpenCommand_UpdatesRecentFilesCollection()
+    {
+        var recentService = new FakeRecentFilesService();
+        var vm = CreateViewModel(recentFilesService: recentService);
+
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        Assert.True(vm.HasRecentFiles);
+        Assert.Single(vm.RecentFiles);
+        Assert.Equal("test.json", vm.RecentFiles[0].DisplayName);
+    }
+
+    [Fact]
+    public async Task ClearRecentFilesCommand_NullService_DoesNotThrow()
+    {
+        var vm = CreateViewModel();
+
+        await vm.ClearRecentFilesCommand.ExecuteAsync(null);
+
+        Assert.Empty(vm.RecentFiles);
+    }
+
     // test doubles
     private sealed class FakeSaveFileService : ISaveFileService
     {
@@ -1788,5 +1948,34 @@ public sealed class MainWindowViewModelTests
 
         public IReadOnlyList<FieldDefinition> DiscoverFields(SaveDocument document)
             => _fields ?? [];
+    }
+
+    private sealed class FakeRecentFilesService : IRecentFilesService
+    {
+        private readonly List<RecentFileEntry> _entries = [];
+        public List<string> AddedPaths { get; } = [];
+
+        public Task<IReadOnlyList<RecentFileEntry>> LoadAsync()
+            => Task.FromResult<IReadOnlyList<RecentFileEntry>>(_entries.ToList());
+
+        public Task AddAsync(string filePath)
+        {
+            AddedPaths.Add(filePath);
+            _entries.RemoveAll(e => string.Equals(e.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+            _entries.Insert(0, new RecentFileEntry(filePath, Path.GetFileName(filePath), DateTime.UtcNow));
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveAsync(string filePath)
+        {
+            _entries.RemoveAll(e => string.Equals(e.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+            return Task.CompletedTask;
+        }
+
+        public Task ClearAsync()
+        {
+            _entries.Clear();
+            return Task.CompletedTask;
+        }
     }
 }
