@@ -32,6 +32,10 @@
             <Setter Property="Background" Value="{DynamicResource BgHover}" />
             <Setter Property="BorderBrush" Value="{DynamicResource BorderStrong}" />
         </Style>
+        <Style Selector="Button.card-button:pointerover > Border.recent-card">
+            <Setter Property="Background" Value="{DynamicResource BgHover}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderStrong}" />
+        </Style>
 
         <!-- category tree item styling -->
         <Style Selector="TreeView.category-tree">
@@ -393,6 +397,84 @@
                                FontSize="12"
                                HorizontalAlignment="Center"
                                Foreground="{DynamicResource TextTertiary}" />
+
+                    <!-- recent files list -->
+                    <StackPanel IsVisible="{Binding HasRecentFiles}"
+                                Spacing="6"
+                                Margin="0,8,0,0"
+                                Width="420">
+
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0"
+                                        Orientation="Horizontal"
+                                        Spacing="6"
+                                        VerticalAlignment="Center">
+                                <PathIcon Data="{StaticResource IconClock}"
+                                          Width="13" Height="13"
+                                          Foreground="{DynamicResource TextTertiary}" />
+                                <TextBlock Text="Recent Files"
+                                           FontSize="13"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextSecondary}" />
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Command="{Binding ClearRecentFilesCommand}"
+                                    Content="Clear"
+                                    FontSize="11"
+                                    Padding="8,4"
+                                    Foreground="{DynamicResource TextTertiary}"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Cursor="Hand" />
+                        </Grid>
+
+                        <Border Height="1"
+                                Background="{DynamicResource BorderSubtle}" />
+
+                        <ItemsControl ItemsSource="{Binding RecentFiles}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:RecentFileViewModel">
+                                    <Button Classes="card-button"
+                                            Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).OpenRecentFileCommand}"
+                                            CommandParameter="{Binding}"
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Stretch"
+                                            Padding="0"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Margin="0,2">
+                                        <Border Classes="recent-card"
+                                                Padding="12,8"
+                                                CornerRadius="4"
+                                                Background="{DynamicResource BgSurface}"
+                                                BorderBrush="{DynamicResource BorderSubtle}"
+                                                BorderThickness="1">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <StackPanel Grid.Column="0"
+                                                            VerticalAlignment="Center"
+                                                            Margin="0,0,8,0">
+                                                    <TextBlock Text="{Binding DisplayName}"
+                                                               FontSize="13"
+                                                               Foreground="{DynamicResource TextPrimary}"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding FilePath}"
+                                                               FontSize="11"
+                                                               Foreground="{DynamicResource TextTertiary}"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip.Tip="{Binding FilePath}" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding LastOpened}"
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource TextTertiary}"
+                                                           VerticalAlignment="Center" />
+                                            </Grid>
+                                        </Border>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- loaded state: grouped tabs -->
