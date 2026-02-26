@@ -170,7 +170,7 @@
         </DataTemplate>
     </Window.Resources>
 
-    <Panel DragDrop.AllowDrop="True">
+    <Panel DragDrop.AllowDrop="True" Background="Transparent">
         <!-- loading overlay -->
         <Border IsVisible="{Binding IsLoading}"
                 Background="{DynamicResource OverlayBackground}"
