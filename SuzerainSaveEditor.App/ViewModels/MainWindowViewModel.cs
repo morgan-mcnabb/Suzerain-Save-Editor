@@ -14,6 +14,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly IFileDialogService _fileDialogService;
     private readonly IFieldDiscoveryService _discoveryService;
     private readonly IUndoRedoService _undoRedoService;
+    private readonly IRecentFilesService? _recentFilesService;
 
     private IEditSession? _editSession;
     private ISchemaService? _activeSchema;
@@ -45,6 +46,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public BatchObservableCollection<FieldViewModel> SelectedCategoryFields { get; } = new();
     public BatchObservableCollection<SubCategorySummaryViewModel> SubCategorySummaries { get; } = new();
     public BatchObservableCollection<BreadcrumbItem> BreadcrumbItems { get; } = new();
+
+    // recent files shown on the empty-state landing page
+    public BatchObservableCollection<RecentFileViewModel> RecentFiles { get; } = new();
 
     [ObservableProperty]
     private bool _isFileLoaded;
@@ -112,6 +116,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string _redoTooltip = "Nothing to redo";
 
+    [ObservableProperty]
+    private bool _hasRecentFiles;
+
     public string WindowTitle => IsFileLoaded
         ? $"Suzerain Save Editor \u2014 {Path.GetFileName(FilePath)}{(IsDirty ? " *" : "")}"
         : "Suzerain Save Editor";
@@ -122,7 +129,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         IFieldResolver fieldResolver,
         IFileDialogService fileDialogService,
         IFieldDiscoveryService discoveryService,
-        IUndoRedoService? undoRedoService = null)
+        IUndoRedoService? undoRedoService = null,
+        IRecentFilesService? recentFilesService = null)
     {
         _saveFileService = saveFileService;
         _schemaService = schemaService;
@@ -130,6 +138,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _fileDialogService = fileDialogService;
         _discoveryService = discoveryService;
         _undoRedoService = undoRedoService ?? new UndoRedoService();
+        _recentFilesService = recentFilesService;
 
         _undoRedoService.StateChanged += OnUndoRedoStateChanged;
     }
@@ -143,6 +152,50 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         var path = await _fileDialogService.OpenFileAsync();
         if (path is null) return;
         await LoadFileAsync(path);
+    }
+
+    [RelayCommand]
+    private async Task OpenRecentFileAsync(RecentFileViewModel entry)
+    {
+        await LoadFileAsync(entry.FilePath);
+    }
+
+    [RelayCommand]
+    private async Task ClearRecentFilesAsync()
+    {
+        if (_recentFilesService is null) return;
+        await _recentFilesService.ClearAsync();
+        RecentFiles.Clear();
+        HasRecentFiles = false;
+    }
+
+    [RelayCommand]
+    private async Task RemoveRecentFileAsync(RecentFileViewModel entry)
+    {
+        if (_recentFilesService is null) return;
+        await _recentFilesService.RemoveAsync(entry.FilePath);
+        await LoadRecentFilesAsync();
+    }
+
+    public async Task LoadRecentFilesAsync()
+    {
+        if (_recentFilesService is null) return;
+
+        try
+        {
+            var entries = await _recentFilesService.LoadAsync();
+            var vms = entries.Select(e => new RecentFileViewModel(
+                e.FilePath,
+                e.DisplayName,
+                e.LastOpenedUtc.ToLocalTime().ToString("MMM d, yyyy h:mm tt"))).ToList();
+
+            RecentFiles.ReplaceAll(vms);
+            HasRecentFiles = RecentFiles.Count > 0;
+        }
+        catch
+        {
+            // recent files is non-critical, never block the user
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanSave))]
@@ -448,6 +501,19 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         UpdateDirtyState();
 
         StatusMessage = $"Loaded: {Path.GetFileName(path)}";
+
+        if (_recentFilesService is not null)
+        {
+            try
+            {
+                await _recentFilesService.AddAsync(path);
+                await LoadRecentFilesAsync();
+            }
+            catch
+            {
+                // recent files persistence failure should never block the user
+            }
+        }
     }
 
     private void ClearLoadedState()
