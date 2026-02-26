@@ -52,6 +52,15 @@ public partial class App : Application
                 recentFilesService);
 
             mainWindow.DataContext = viewModel;
+
+            viewModel.ShowChangeSummaryDialog = async (items) =>
+            {
+                var dialog = new ChangeSummaryDialog();
+                dialog.SetChanges(items);
+                await dialog.ShowDialog(mainWindow);
+                return dialog.Result == ChangeSummaryResult.Save;
+            };
+
             _ = viewModel.LoadRecentFilesAsync();
 
             desktop.MainWindow = mainWindow;

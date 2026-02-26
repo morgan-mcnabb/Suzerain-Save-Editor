@@ -16,6 +16,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly IUndoRedoService _undoRedoService;
     private readonly IRecentFilesService? _recentFilesService;
 
+    // callback injected by the view to show the change summary dialog before save
+    // when null, save proceeds without confirmation (useful for tests)
+    private Func<IReadOnlyList<ChangeSummaryItemViewModel>, Task<bool>>? _showChangeSummaryDialog;
+
     private IEditSession? _editSession;
     private ISchemaService? _activeSchema;
     private bool _isApplyingUndoRedo;
@@ -119,6 +123,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _hasRecentFiles;
 
+    public Func<IReadOnlyList<ChangeSummaryItemViewModel>, Task<bool>>? ShowChangeSummaryDialog
+    {
+        get => _showChangeSummaryDialog;
+        set => _showChangeSummaryDialog = value;
+    }
+
     public string WindowTitle => IsFileLoaded
         ? $"Suzerain Save Editor \u2014 {Path.GetFileName(FilePath)}{(IsDirty ? " *" : "")}"
         : "Suzerain Save Editor";
@@ -213,6 +223,23 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             {
                 StatusMessage = $"Cannot save: {validation.Error}";
                 return;
+            }
+
+            // show change summary dialog if callback is wired up
+            if (_showChangeSummaryDialog is not null)
+            {
+                StatusMessage = "Reviewing changes...";
+                IsLoading = false;
+
+                var summaryItems = BuildChangeSummaryItems();
+                var confirmed = await _showChangeSummaryDialog(summaryItems);
+                if (!confirmed)
+                {
+                    StatusMessage = "Save cancelled";
+                    return;
+                }
+
+                IsLoading = true;
             }
 
             StatusMessage = "Saving...";
@@ -860,6 +887,29 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private FieldViewModel? FindFieldViewModel(string fieldId)
     {
         return _fieldLookup.GetValueOrDefault(fieldId);
+    }
+
+    internal IReadOnlyList<ChangeSummaryItemViewModel> BuildChangeSummaryItems()
+    {
+        if (_editSession is null) return [];
+
+        var dirtyFields = _editSession.GetDirtyFields();
+        var items = new List<ChangeSummaryItemViewModel>(dirtyFields.Count);
+
+        foreach (var edit in dirtyFields)
+        {
+            var label = _fieldLookup.TryGetValue(edit.FieldId, out var fieldVm)
+                ? fieldVm.Label
+                : edit.FieldId;
+
+            var fieldType = fieldVm?.FieldType.ToString() ?? "String";
+
+            items.Add(new ChangeSummaryItemViewModel(label, fieldType, edit.OldValue, edit.NewValue));
+        }
+
+        items.Sort((a, b) => string.Compare(a.Label, b.Label, StringComparison.OrdinalIgnoreCase));
+
+        return items;
     }
 
     private IEnumerable<FieldViewModel> AllFields()
