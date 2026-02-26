@@ -451,7 +451,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         SelectCategory(item.Node);
     }
 
-    private async Task LoadFileAsync(string path)
+    internal async Task LoadFileAsync(string path)
     {
         try
         {

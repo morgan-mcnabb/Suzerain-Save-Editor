@@ -170,7 +170,7 @@
         </DataTemplate>
     </Window.Resources>
 
-    <Panel>
+    <Panel DragDrop.AllowDrop="True">
         <!-- loading overlay -->
         <Border IsVisible="{Binding IsLoading}"
                 Background="{DynamicResource OverlayBackground}"
@@ -394,6 +394,10 @@
                             FontSize="14"
                             Classes="accent" />
                     <TextBlock Text="Supports Suzerain and Rizia DLC save files (.json)"
+                               FontSize="12"
+                               HorizontalAlignment="Center"
+                               Foreground="{DynamicResource TextTertiary}" />
+                    <TextBlock Text="or drag and drop a .json file"
                                FontSize="12"
                                HorizontalAlignment="Center"
                                Foreground="{DynamicResource TextTertiary}" />
@@ -722,5 +726,25 @@
                 </TabControl>
             </Panel>
         </DockPanel>
+
+        <Border Name="DropOverlay"
+                IsVisible="False"
+                Background="{DynamicResource OverlayBackground}"
+                ZIndex="200"
+                IsHitTestVisible="False">
+            <StackPanel VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Spacing="12">
+                <TextBlock Text="Drop save file here"
+                           FontSize="24"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource AccentPrimary}"
+                           HorizontalAlignment="Center" />
+                <TextBlock Text=".json files only"
+                           FontSize="14"
+                           Foreground="{DynamicResource TextTertiary}"
+                           HorizontalAlignment="Center" />
+            </StackPanel>
+        </Border>
     </Panel>
 </Window>
