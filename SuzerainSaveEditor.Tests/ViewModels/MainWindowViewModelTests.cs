@@ -73,14 +73,16 @@ public sealed class MainWindowViewModelTests
     private MainWindowViewModel CreateViewModel(
         ISaveFileService? saveFileService = null,
         IFileDialogService? fileDialogService = null,
-        IFieldDiscoveryService? discoveryService = null)
+        IFieldDiscoveryService? discoveryService = null,
+        IRecentFilesService? recentFilesService = null)
     {
         var doc = CreateTestDocument();
         saveFileService ??= new FakeSaveFileService(doc);
         fileDialogService ??= new FakeFileDialogService("C:\\saves\\test.json");
         discoveryService ??= new FakeFieldDiscoveryService();
 
-        return new MainWindowViewModel(saveFileService, _schema, _resolver, fileDialogService, discoveryService);
+        return new MainWindowViewModel(saveFileService, _schema, _resolver, fileDialogService, discoveryService,
+            recentFilesService: recentFilesService);
     }
 
     // helper to find a field across all category nodes (recursive)
@@ -1376,6 +1378,662 @@ public sealed class MainWindowViewModelTests
         Assert.False(vm.SaveCommittedToDisk);
     }
 
+    // undo/redo
+
+    [Fact]
+    public async Task UndoRedo_InitialState_CannotUndoOrRedo()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        Assert.False(vm.CanUndo);
+        Assert.False(vm.CanRedo);
+    }
+
+    [Fact]
+    public async Task Undo_AfterEdit_RevertsFieldValue()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var field = vm.GeneralFields.First(f => f.FieldId == "meta.campaignName");
+        var original = field.Value;
+        field.Value = "NEW_CAMPAIGN";
+
+        Assert.True(vm.CanUndo);
+        vm.UndoCommand.Execute(null);
+
+        Assert.Equal(original, field.Value);
+        Assert.False(field.IsDirty);
+        Assert.False(vm.IsDirty);
+        Assert.False(vm.CanUndo);
+    }
+
+    [Fact]
+    public async Task Redo_AfterUndo_ReappliesValue()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var field = vm.GeneralFields.First(f => f.FieldId == "meta.campaignName");
+        field.Value = "NEW_CAMPAIGN";
+
+        vm.UndoCommand.Execute(null);
+        Assert.True(vm.CanRedo);
+
+        vm.RedoCommand.Execute(null);
+
+        Assert.Equal("NEW_CAMPAIGN", field.Value);
+        Assert.True(field.IsDirty);
+        Assert.True(vm.IsDirty);
+        Assert.False(vm.CanRedo);
+    }
+
+    [Fact]
+    public async Task Undo_MultipleDifferentFields_RevertsInLifoOrder()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var campaign = vm.GeneralFields.First(f => f.FieldId == "meta.campaignName");
+        var turn = vm.GeneralFields.First(f => f.FieldId == "meta.turnNo");
+        var originalCampaign = campaign.Value;
+        var originalTurn = turn.Value;
+
+        campaign.Value = "CHANGED";
+        turn.Value = "10";
+
+        // undo turn first (LIFO)
+        vm.UndoCommand.Execute(null);
+        Assert.Equal(originalTurn, turn.Value);
+        Assert.Equal("CHANGED", campaign.Value);
+
+        // undo campaign
+        vm.UndoCommand.Execute(null);
+        Assert.Equal(originalCampaign, campaign.Value);
+        Assert.False(vm.IsDirty);
+    }
+
+    [Fact]
+    public async Task Undo_CoalescesConsecutiveSameFieldEdits()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var field = vm.GeneralFields.First(f => f.FieldId == "meta.campaignName");
+        var original = field.Value;
+
+        // simulate typing keystrokes to the same field
+        field.Value = "N";
+        field.Value = "NE";
+        field.Value = "NEW";
+
+        // one undo should revert all the way back
+        vm.UndoCommand.Execute(null);
+        Assert.Equal(original, field.Value);
+        Assert.False(vm.CanUndo);
+    }
+
+    [Fact]
+    public async Task Undo_BoolField_RevertsToggle()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var field = vm.SordlandFields.FirstOrDefault(f => f.IsBool);
+        Assert.NotNull(field);
+        var original = field.BoolValue;
+
+        field.BoolValue = !original;
+        Assert.True(field.IsDirty);
+
+        vm.UndoCommand.Execute(null);
+
+        Assert.Equal(original, field.BoolValue);
+        Assert.False(field.IsDirty);
+    }
+
+    [Fact]
+    public async Task Redo_BoolField_ReappliesToggle()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var field = vm.SordlandFields.FirstOrDefault(f => f.IsBool);
+        Assert.NotNull(field);
+        var original = field.BoolValue;
+
+        field.BoolValue = !original;
+        vm.UndoCommand.Execute(null);
+        vm.RedoCommand.Execute(null);
+
+        Assert.Equal(!original, field.BoolValue);
+        Assert.True(field.IsDirty);
+    }
+
+    [Fact]
+    public async Task Undo_IntField_RevertsAndClearsValidation()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var field = vm.GeneralFields.First(f => f.FieldId == "meta.turnNo");
+        var original = field.Value;
+        field.Value = "10";
+
+        vm.UndoCommand.Execute(null);
+
+        Assert.Equal(original, field.Value);
+        Assert.Null(field.ValidationError);
+        Assert.False(field.IsDirty);
+    }
+
+    [Fact]
+    public async Task Undo_StackClearedAfterRevertAll()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var field = vm.GeneralFields.First(f => f.FieldId == "meta.campaignName");
+        field.Value = "CHANGED";
+        Assert.True(vm.CanUndo);
+
+        vm.RevertAllCommand.Execute(null);
+
+        Assert.False(vm.CanUndo);
+        Assert.False(vm.CanRedo);
+    }
+
+    [Fact]
+    public async Task Undo_StackClearedAfterSave()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var field = vm.GeneralFields.First(f => f.FieldId == "meta.campaignName");
+        field.Value = "CHANGED";
+        Assert.True(vm.CanUndo);
+
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.False(vm.CanUndo);
+        Assert.False(vm.CanRedo);
+    }
+
+    [Fact]
+    public async Task Undo_StackClearedAfterLoadingNewFile()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var field = vm.GeneralFields.First(f => f.FieldId == "meta.campaignName");
+        field.Value = "CHANGED";
+        Assert.True(vm.CanUndo);
+
+        // open again (simulates loading a different file)
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        Assert.False(vm.CanUndo);
+        Assert.False(vm.CanRedo);
+    }
+
+    [Fact]
+    public async Task Undo_NewEditAfterUndo_ClearsRedoStack()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var campaign = vm.GeneralFields.First(f => f.FieldId == "meta.campaignName");
+        campaign.Value = "FIRST";
+
+        vm.UndoCommand.Execute(null);
+        Assert.True(vm.CanRedo);
+
+        // new edit should clear redo
+        campaign.Value = "SECOND";
+        Assert.False(vm.CanRedo);
+    }
+
+    [Fact]
+    public async Task UndoRedo_FullCycle_MaintainsCorrectDirtyCount()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var campaign = vm.GeneralFields.First(f => f.FieldId == "meta.campaignName");
+        var turn = vm.GeneralFields.First(f => f.FieldId == "meta.turnNo");
+
+        campaign.Value = "CHANGED";
+        Assert.Equal(1, vm.ChangeCount);
+
+        turn.Value = "10";
+        Assert.Equal(2, vm.ChangeCount);
+
+        vm.UndoCommand.Execute(null);
+        Assert.Equal(1, vm.ChangeCount);
+
+        vm.UndoCommand.Execute(null);
+        Assert.Equal(0, vm.ChangeCount);
+
+        vm.RedoCommand.Execute(null);
+        Assert.Equal(1, vm.ChangeCount);
+
+        vm.RedoCommand.Execute(null);
+        Assert.Equal(2, vm.ChangeCount);
+    }
+
+    [Fact]
+    public async Task Undo_WhenNoFileLoaded_DoesNotThrow()
+    {
+        var vm = CreateViewModel();
+
+        // should be a safe no-op
+        vm.UndoCommand.Execute(null);
+        vm.RedoCommand.Execute(null);
+
+        Assert.False(vm.CanUndo);
+        Assert.False(vm.CanRedo);
+    }
+
+    [Fact]
+    public async Task Undo_EnumField_RevertsToOriginalOption()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var field = vm.SordlandFields.FirstOrDefault(f => f.IsEnum && f.Options?.Count > 1);
+        if (field is null) return; // skip if no enum fields in schema
+
+        var original = field.Value;
+        var newOption = field.Options!.First(o => o != original);
+        field.Value = newOption;
+        Assert.True(field.IsDirty);
+
+        vm.UndoCommand.Execute(null);
+
+        Assert.Equal(original, field.Value);
+        Assert.False(field.IsDirty);
+    }
+
+    [Fact]
+    public async Task Undo_UpdatesSubCategoryCardsWhenVisible()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithParentNode());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var parentNode = vm.CategoryNodes.First(n => n.IsParent);
+        vm.SelectCategory(parentNode);
+        Assert.True(vm.ShowCategoryCards);
+
+        // edit a descendant field
+        var descendantField = parentNode.GetAllDescendantFields().First();
+        descendantField.BoolValue = !descendantField.BoolValue;
+        Assert.Contains(vm.SubCategorySummaries, s => s.HasDirtyFields);
+
+        // undo should refresh the cards
+        vm.UndoCommand.Execute(null);
+        Assert.DoesNotContain(vm.SubCategorySummaries, s => s.HasDirtyFields);
+    }
+
+    [Fact]
+    public async Task Undo_CoalesceThenUndoMultipleFields_CorrectOrder()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var campaign = vm.GeneralFields.First(f => f.FieldId == "meta.campaignName");
+        var turn = vm.GeneralFields.First(f => f.FieldId == "meta.turnNo");
+        var originalCampaign = campaign.Value;
+        var originalTurn = turn.Value;
+
+        // type into campaign (coalesces)
+        campaign.Value = "A";
+        campaign.Value = "AB";
+        campaign.Value = "ABC";
+
+        // type into turn (new entry, stops coalescing on campaign)
+        turn.Value = "7";
+        turn.Value = "8";
+
+        // undo turn (coalesced into one step)
+        vm.UndoCommand.Execute(null);
+        Assert.Equal(originalTurn, turn.Value);
+        Assert.Equal("ABC", campaign.Value);
+
+        // undo campaign (coalesced into one step)
+        vm.UndoCommand.Execute(null);
+        Assert.Equal(originalCampaign, campaign.Value);
+        Assert.False(vm.IsDirty);
+    }
+
+    [Fact]
+    public async Task LoadRecentFilesAsync_NullService_DoesNotThrow()
+    {
+        var vm = CreateViewModel();
+
+        await vm.LoadRecentFilesAsync();
+
+        Assert.Empty(vm.RecentFiles);
+        Assert.False(vm.HasRecentFiles);
+    }
+
+    [Fact]
+    public async Task LoadRecentFilesAsync_EmptyList_HasRecentFilesFalse()
+    {
+        var recentService = new FakeRecentFilesService();
+        var vm = CreateViewModel(recentFilesService: recentService);
+
+        await vm.LoadRecentFilesAsync();
+
+        Assert.Empty(vm.RecentFiles);
+        Assert.False(vm.HasRecentFiles);
+    }
+
+    [Fact]
+    public async Task LoadRecentFilesAsync_WithEntries_PopulatesCollection()
+    {
+        var recentService = new FakeRecentFilesService();
+        await recentService.AddAsync("C:\\saves\\one.json");
+        await recentService.AddAsync("C:\\saves\\two.json");
+        var vm = CreateViewModel(recentFilesService: recentService);
+
+        await vm.LoadRecentFilesAsync();
+
+        Assert.Equal(2, vm.RecentFiles.Count);
+        Assert.Equal("two.json", vm.RecentFiles[0].DisplayName);
+        Assert.Equal("one.json", vm.RecentFiles[1].DisplayName);
+    }
+
+    [Fact]
+    public async Task LoadRecentFilesAsync_WithEntries_HasRecentFilesTrue()
+    {
+        var recentService = new FakeRecentFilesService();
+        await recentService.AddAsync("C:\\saves\\one.json");
+        var vm = CreateViewModel(recentFilesService: recentService);
+
+        await vm.LoadRecentFilesAsync();
+
+        Assert.True(vm.HasRecentFiles);
+    }
+
+    [Fact]
+    public async Task LoadRecentFilesAsync_FormatsLastOpened()
+    {
+        var recentService = new FakeRecentFilesService();
+        await recentService.AddAsync("C:\\saves\\one.json");
+        var vm = CreateViewModel(recentFilesService: recentService);
+
+        await vm.LoadRecentFilesAsync();
+
+        Assert.False(string.IsNullOrWhiteSpace(vm.RecentFiles[0].LastOpened));
+    }
+
+    [Fact]
+    public async Task OpenCommand_RecordsToRecentFiles()
+    {
+        var recentService = new FakeRecentFilesService();
+        var vm = CreateViewModel(recentFilesService: recentService);
+
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        Assert.Contains("C:\\saves\\test.json", recentService.AddedPaths);
+    }
+
+    [Fact]
+    public async Task OpenRecentFileCommand_LoadsFile()
+    {
+        var recentService = new FakeRecentFilesService();
+        var vm = CreateViewModel(recentFilesService: recentService);
+        var entry = new RecentFileViewModel("C:\\saves\\test.json", "test.json", "Jan 1, 2025 12:00 PM");
+
+        await vm.OpenRecentFileCommand.ExecuteAsync(entry);
+
+        Assert.True(vm.IsFileLoaded);
+        Assert.Equal("C:\\saves\\test.json", vm.FilePath);
+    }
+
+    [Fact]
+    public async Task OpenRecentFileCommand_LoadFailure_ShowsError()
+    {
+        var failService = new FailOnSecondOpenSaveFileService(CreateTestDocument());
+        var recentService = new FakeRecentFilesService();
+        var vm = CreateViewModel(saveFileService: failService, recentFilesService: recentService);
+
+        await vm.OpenCommand.ExecuteAsync(null);
+        Assert.True(vm.IsFileLoaded);
+
+        var entry = new RecentFileViewModel("C:\\saves\\test.json", "test.json", "Jan 1, 2025 12:00 PM");
+        await vm.OpenRecentFileCommand.ExecuteAsync(entry);
+
+        Assert.False(vm.IsFileLoaded);
+        Assert.Contains("Failed to load", vm.StatusMessage);
+    }
+
+    [Fact]
+    public async Task ClearRecentFilesCommand_ClearsList()
+    {
+        var recentService = new FakeRecentFilesService();
+        await recentService.AddAsync("C:\\saves\\one.json");
+        var vm = CreateViewModel(recentFilesService: recentService);
+        await vm.LoadRecentFilesAsync();
+        Assert.NotEmpty(vm.RecentFiles);
+
+        await vm.ClearRecentFilesCommand.ExecuteAsync(null);
+
+        Assert.Empty(vm.RecentFiles);
+        Assert.False(vm.HasRecentFiles);
+    }
+
+    [Fact]
+    public async Task RemoveRecentFileCommand_RemovesEntry()
+    {
+        var recentService = new FakeRecentFilesService();
+        await recentService.AddAsync("C:\\saves\\one.json");
+        await recentService.AddAsync("C:\\saves\\two.json");
+        var vm = CreateViewModel(recentFilesService: recentService);
+        await vm.LoadRecentFilesAsync();
+        Assert.Equal(2, vm.RecentFiles.Count);
+
+        var entry = new RecentFileViewModel("C:\\saves\\one.json", "one.json", "Jan 1, 2025 12:00 PM");
+        await vm.RemoveRecentFileCommand.ExecuteAsync(entry);
+
+        Assert.Single(vm.RecentFiles);
+        Assert.Equal("two.json", vm.RecentFiles[0].DisplayName);
+    }
+
+    [Fact]
+    public async Task OpenCommand_UpdatesRecentFilesCollection()
+    {
+        var recentService = new FakeRecentFilesService();
+        var vm = CreateViewModel(recentFilesService: recentService);
+
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        Assert.True(vm.HasRecentFiles);
+        Assert.Single(vm.RecentFiles);
+        Assert.Equal("test.json", vm.RecentFiles[0].DisplayName);
+    }
+
+    [Fact]
+    public async Task ClearRecentFilesCommand_NullService_DoesNotThrow()
+    {
+        var vm = CreateViewModel();
+
+        await vm.ClearRecentFilesCommand.ExecuteAsync(null);
+
+        Assert.Empty(vm.RecentFiles);
+    }
+
+    [Fact]
+    public async Task SaveCommand_WithSummaryDialogConfirmed_SavesSuccessfully()
+    {
+        var fakeSave = new FakeSaveFileService(CreateTestDocument());
+        var vm = CreateViewModel(saveFileService: fakeSave);
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.ShowChangeSummaryDialog = _ => Task.FromResult(true);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Single(fakeSave.SaveCalls);
+        Assert.False(vm.IsDirty);
+    }
+
+    [Fact]
+    public async Task SaveCommand_WithSummaryDialogCancelled_DoesNotSave()
+    {
+        var fakeSave = new FakeSaveFileService(CreateTestDocument());
+        var vm = CreateViewModel(saveFileService: fakeSave);
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.ShowChangeSummaryDialog = _ => Task.FromResult(false);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Empty(fakeSave.SaveCalls);
+        Assert.True(vm.IsDirty);
+        Assert.Equal("Save cancelled", vm.StatusMessage);
+    }
+
+    [Fact]
+    public async Task SaveCommand_WithSummaryDialogCancelled_IsLoadingFalse()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.ShowChangeSummaryDialog = _ => Task.FromResult(false);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.False(vm.IsLoading);
+    }
+
+    [Fact]
+    public async Task SaveCommand_WithoutSummaryDialog_SavesWithoutPrompt()
+    {
+        var fakeSave = new FakeSaveFileService(CreateTestDocument());
+        var vm = CreateViewModel(saveFileService: fakeSave);
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        // ShowChangeSummaryDialog is null by default
+        Assert.Null(vm.ShowChangeSummaryDialog);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Single(fakeSave.SaveCalls);
+    }
+
+    [Fact]
+    public async Task SaveCommand_SummaryDialogReceivesCorrectItems()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        IReadOnlyList<ChangeSummaryItemViewModel>? receivedItems = null;
+        vm.ShowChangeSummaryDialog = items =>
+        {
+            receivedItems = items;
+            return Task.FromResult(true);
+        };
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "NEW_NAME";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.NotNull(receivedItems);
+        Assert.Single(receivedItems);
+        Assert.Equal("Campaign Name", receivedItems[0].Label);
+        Assert.Equal("PRESIDENT", receivedItems[0].OldValue);
+        Assert.Equal("NEW_NAME", receivedItems[0].NewValue);
+    }
+
+    [Fact]
+    public async Task SaveCommand_SummaryDialogReceivesMultipleItems_SortedByLabel()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        IReadOnlyList<ChangeSummaryItemViewModel>? receivedItems = null;
+        vm.ShowChangeSummaryDialog = items =>
+        {
+            receivedItems = items;
+            return Task.FromResult(true);
+        };
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "NEW_NAME";
+        vm.GeneralFields.First(f => f.FieldId == "meta.saveFileName").Value = "changed_save";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.NotNull(receivedItems);
+        Assert.Equal(2, receivedItems.Count);
+
+        // verify sorted alphabetically by label
+        Assert.True(
+            string.Compare(receivedItems[0].Label, receivedItems[1].Label, StringComparison.OrdinalIgnoreCase) <= 0,
+            $"Expected '{receivedItems[0].Label}' before '{receivedItems[1].Label}' alphabetically");
+    }
+
+    [Fact]
+    public async Task BuildChangeSummaryItems_NoEdits_ReturnsEmpty()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var items = vm.BuildChangeSummaryItems();
+
+        Assert.Empty(items);
+    }
+
+    [Fact]
+    public async Task BuildChangeSummaryItems_WithEdits_MapsLabelAndType()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        vm.GeneralFields.First(f => f.FieldId == "meta.campaignName").Value = "CHANGED";
+
+        var items = vm.BuildChangeSummaryItems();
+
+        Assert.Single(items);
+        var item = items[0];
+        Assert.Equal("Campaign Name", item.Label);
+        Assert.Equal("String", item.FieldType);
+        Assert.Equal("PRESIDENT", item.OldValue);
+        Assert.Equal("CHANGED", item.NewValue);
+    }
+
+    [Fact]
+    public async Task BuildChangeSummaryItems_BoolField_HasCorrectType()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var boolField = vm.SordlandFields.FirstOrDefault(f => f.FieldType == FieldType.Bool);
+        if (boolField is null) return; // skip if no bool fields in sordland
+
+        boolField.Value = (boolField.Value == "True") ? "False" : "True";
+
+        var items = vm.BuildChangeSummaryItems();
+        var match = items.FirstOrDefault(i => i.Label == boolField.Label);
+
+        Assert.NotNull(match);
+        Assert.Equal("Bool", match.FieldType);
+    }
+
+    [Fact]
+    public void BuildChangeSummaryItems_NoSession_ReturnsEmpty()
+    {
+        var vm = CreateViewModel();
+
+        // no file loaded, so no session
+        var items = vm.BuildChangeSummaryItems();
+
+        Assert.Empty(items);
+    }
+
     // test doubles
     private sealed class FakeSaveFileService : ISaveFileService
     {
@@ -1460,5 +2118,34 @@ public sealed class MainWindowViewModelTests
 
         public IReadOnlyList<FieldDefinition> DiscoverFields(SaveDocument document)
             => _fields ?? [];
+    }
+
+    private sealed class FakeRecentFilesService : IRecentFilesService
+    {
+        private readonly List<RecentFileEntry> _entries = [];
+        public List<string> AddedPaths { get; } = [];
+
+        public Task<IReadOnlyList<RecentFileEntry>> LoadAsync()
+            => Task.FromResult<IReadOnlyList<RecentFileEntry>>(_entries.ToList());
+
+        public Task AddAsync(string filePath)
+        {
+            AddedPaths.Add(filePath);
+            _entries.RemoveAll(e => string.Equals(e.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+            _entries.Insert(0, new RecentFileEntry(filePath, Path.GetFileName(filePath), DateTime.UtcNow));
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveAsync(string filePath)
+        {
+            _entries.RemoveAll(e => string.Equals(e.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+            return Task.CompletedTask;
+        }
+
+        public Task ClearAsync()
+        {
+            _entries.Clear();
+            return Task.CompletedTask;
+        }
     }
 }

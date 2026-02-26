@@ -15,6 +15,9 @@
     <Window.KeyBindings>
         <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenCommand}" />
         <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveCommand}" />
+        <KeyBinding Gesture="Ctrl+Z" Command="{Binding UndoCommand}" />
+        <KeyBinding Gesture="Ctrl+Y" Command="{Binding RedoCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+Z" Command="{Binding RedoCommand}" />
     </Window.KeyBindings>
 
     <Window.Styles>
@@ -26,6 +29,10 @@
             <Setter Property="Background" Value="Transparent" />
         </Style>
         <Style Selector="Button.card-button:pointerover > Border.sub-card">
+            <Setter Property="Background" Value="{DynamicResource BgHover}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderStrong}" />
+        </Style>
+        <Style Selector="Button.card-button:pointerover > Border.recent-card">
             <Setter Property="Background" Value="{DynamicResource BgHover}" />
             <Setter Property="BorderBrush" Value="{DynamicResource BorderStrong}" />
         </Style>
@@ -163,7 +170,7 @@
         </DataTemplate>
     </Window.Resources>
 
-    <Panel>
+    <Panel DragDrop.AllowDrop="True" Background="Transparent">
         <!-- loading overlay -->
         <Border IsVisible="{Binding IsLoading}"
                 Background="{DynamicResource OverlayBackground}"
@@ -214,6 +221,39 @@
                                 <TextBlock Text="Save" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
+                        <!-- separator between file ops and edit ops -->
+                        <Border Width="1"
+                                Height="20"
+                                Margin="4,0"
+                                Background="{DynamicResource BorderDefault}"
+                                VerticalAlignment="Center" />
+
+                        <Button Command="{Binding UndoCommand}"
+                                Padding="14,8"
+                                ToolTip.Tip="{Binding UndoTooltip}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Data="{StaticResource IconUndo}"
+                                          Width="16" Height="16" />
+                                <TextBlock Text="Undo" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding RedoCommand}"
+                                Padding="14,8"
+                                ToolTip.Tip="{Binding RedoTooltip}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Data="{StaticResource IconRedo}"
+                                          Width="16" Height="16" />
+                                <TextBlock Text="Redo" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- separator between edit ops and revert -->
+                        <Border Width="1"
+                                Height="20"
+                                Margin="4,0"
+                                Background="{DynamicResource BorderDefault}"
+                                VerticalAlignment="Center" />
+
                         <Button Command="{Binding RevertAllCommand}"
                                 Padding="14,8"
                                 ToolTip.Tip="Discard all unsaved changes">
@@ -357,6 +397,88 @@
                                FontSize="12"
                                HorizontalAlignment="Center"
                                Foreground="{DynamicResource TextTertiary}" />
+                    <TextBlock Text="or drag and drop a .json file"
+                               FontSize="12"
+                               HorizontalAlignment="Center"
+                               Foreground="{DynamicResource TextTertiary}" />
+
+                    <!-- recent files list -->
+                    <StackPanel IsVisible="{Binding HasRecentFiles}"
+                                Spacing="6"
+                                Margin="0,8,0,0"
+                                Width="420">
+
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0"
+                                        Orientation="Horizontal"
+                                        Spacing="6"
+                                        VerticalAlignment="Center">
+                                <PathIcon Data="{StaticResource IconClock}"
+                                          Width="13" Height="13"
+                                          Foreground="{DynamicResource TextTertiary}" />
+                                <TextBlock Text="Recent Files"
+                                           FontSize="13"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextSecondary}" />
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Command="{Binding ClearRecentFilesCommand}"
+                                    Content="Clear"
+                                    FontSize="11"
+                                    Padding="8,4"
+                                    Foreground="{DynamicResource TextTertiary}"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Cursor="Hand" />
+                        </Grid>
+
+                        <Border Height="1"
+                                Background="{DynamicResource BorderSubtle}" />
+
+                        <ItemsControl ItemsSource="{Binding RecentFiles}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:RecentFileViewModel">
+                                    <Button Classes="card-button"
+                                            Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).OpenRecentFileCommand}"
+                                            CommandParameter="{Binding}"
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Stretch"
+                                            Padding="0"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Margin="0,2">
+                                        <Border Classes="recent-card"
+                                                Padding="12,8"
+                                                CornerRadius="4"
+                                                Background="{DynamicResource BgSurface}"
+                                                BorderBrush="{DynamicResource BorderSubtle}"
+                                                BorderThickness="1">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <StackPanel Grid.Column="0"
+                                                            VerticalAlignment="Center"
+                                                            Margin="0,0,8,0">
+                                                    <TextBlock Text="{Binding DisplayName}"
+                                                               FontSize="13"
+                                                               Foreground="{DynamicResource TextPrimary}"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding FilePath}"
+                                                               FontSize="11"
+                                                               Foreground="{DynamicResource TextTertiary}"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip.Tip="{Binding FilePath}" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding LastOpened}"
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource TextTertiary}"
+                                                           VerticalAlignment="Center" />
+                                            </Grid>
+                                        </Border>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- loaded state: grouped tabs -->
@@ -604,5 +726,59 @@
                 </TabControl>
             </Panel>
         </DockPanel>
+
+        <Border Name="DropOverlay"
+                IsVisible="False"
+                Background="{DynamicResource OverlayBackground}"
+                ZIndex="200"
+                IsHitTestVisible="False">
+            <StackPanel VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Spacing="16">
+                <!-- top divider -->
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            Spacing="8">
+                    <Border Height="1" Width="60"
+                            Background="{DynamicResource BorderDefault}"
+                            VerticalAlignment="Center" />
+                    <TextBlock Text="&#x25C6;"
+                               FontSize="10"
+                               Foreground="{DynamicResource AccentPrimary}"
+                               VerticalAlignment="Center" />
+                    <Border Height="1" Width="60"
+                            Background="{DynamicResource BorderDefault}"
+                            VerticalAlignment="Center" />
+                </StackPanel>
+
+                <TextBlock Text="DROP SAVE FILE HERE"
+                           FontSize="22"
+                           FontWeight="Light"
+                           LetterSpacing="4"
+                           HorizontalAlignment="Center"
+                           Foreground="{DynamicResource AccentPrimary}" />
+
+                <!-- bottom divider -->
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            Spacing="8">
+                    <Border Height="1" Width="60"
+                            Background="{DynamicResource BorderDefault}"
+                            VerticalAlignment="Center" />
+                    <TextBlock Text="&#x25C6;"
+                               FontSize="10"
+                               Foreground="{DynamicResource AccentPrimary}"
+                               VerticalAlignment="Center" />
+                    <Border Height="1" Width="60"
+                            Background="{DynamicResource BorderDefault}"
+                            VerticalAlignment="Center" />
+                </StackPanel>
+
+                <TextBlock Text=".json files only"
+                           FontSize="13"
+                           Foreground="{DynamicResource TextTertiary}"
+                           HorizontalAlignment="Center" />
+            </StackPanel>
+        </Border>
     </Panel>
 </Window>

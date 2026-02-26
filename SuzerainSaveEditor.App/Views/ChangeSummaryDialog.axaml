@@ -1,0 +1,207 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SuzerainSaveEditor.App.ViewModels"
+        x:Class="SuzerainSaveEditor.App.Views.ChangeSummaryDialog"
+        Title="Review Changes"
+        Width="580"
+        MaxHeight="650"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        SizeToContent="Height"
+        Background="{DynamicResource BgBase}">
+
+    <Window.Styles>
+        <!-- change row: base state with hover transition -->
+        <Style Selector="Border.change-row">
+            <Setter Property="Padding" Value="14,10" />
+            <Setter Property="BorderThickness" Value="3,0,0,1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource StatusDirty}" />
+            <Setter Property="Background" Value="{DynamicResource BgSurface}" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.2" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.change-row:pointerover">
+            <Setter Property="Background" Value="{DynamicResource BgHover}" />
+        </Style>
+    </Window.Styles>
+
+    <StackPanel Margin="28,24,28,24" Spacing="20">
+
+        <!-- title treatment -->
+        <StackPanel HorizontalAlignment="Center" Spacing="4">
+            <TextBlock Text="REVIEW CHANGES"
+                       FontSize="18"
+                       FontWeight="Light"
+                       LetterSpacing="3"
+                       HorizontalAlignment="Center"
+                       Foreground="{DynamicResource AccentPrimary}" />
+
+            <!-- decorative diamond divider -->
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Center"
+                        Spacing="8"
+                        Margin="0,4,0,0">
+                <Border Height="1" Width="40"
+                        Background="{DynamicResource BorderDefault}"
+                        VerticalAlignment="Center" />
+                <TextBlock Text="&#x25C6;"
+                           FontSize="8"
+                           Foreground="{DynamicResource AccentPrimary}"
+                           VerticalAlignment="Center" />
+                <Border Height="1" Width="40"
+                        Background="{DynamicResource BorderDefault}"
+                        VerticalAlignment="Center" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- change count pill -->
+        <Border CornerRadius="12"
+                Background="{DynamicResource StatusDirtyBg}"
+                Padding="12,6"
+                HorizontalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Ellipse Width="8" Height="8"
+                         VerticalAlignment="Center"
+                         Fill="{DynamicResource StatusDirty}" />
+                <TextBlock x:Name="SummaryTextBlock"
+                           FontSize="13"
+                           Foreground="{DynamicResource StatusDirty}" />
+            </StackPanel>
+        </Border>
+
+        <!-- change list -->
+        <Border Background="{DynamicResource BgSurface}"
+                BorderBrush="{DynamicResource BorderSubtle}"
+                BorderThickness="1"
+                CornerRadius="8"
+                MaxHeight="380"
+                ClipToBounds="True"
+                BoxShadow="0 2 12 0 #20000000">
+
+            <DockPanel>
+                <!-- column headers -->
+                <Border DockPanel.Dock="Top"
+                        Padding="14,8"
+                        Background="{DynamicResource BgElevated}"
+                        BorderThickness="0,0,0,1"
+                        BorderBrush="{DynamicResource BorderSubtle}">
+                    <!-- left margin of 3 accounts for the accent border on data rows -->
+                    <Grid ColumnDefinitions="203,*" Margin="3,0,0,0">
+                        <TextBlock Grid.Column="0"
+                                   Text="FIELD"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   LetterSpacing="1"
+                                   Foreground="{DynamicResource TextTertiary}" />
+                        <Grid Grid.Column="1" ColumnDefinitions="*,Auto,*">
+                            <TextBlock Grid.Column="0"
+                                       Text="BEFORE"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       LetterSpacing="1"
+                                       Foreground="{DynamicResource TextTertiary}" />
+                            <TextBlock Grid.Column="2"
+                                       Text="AFTER"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       LetterSpacing="1"
+                                       Foreground="{DynamicResource TextTertiary}"
+                                       Margin="6,0,0,0" />
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- scrollable change rows -->
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto">
+                    <ItemsControl x:Name="ChangesList">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:ChangeSummaryItemViewModel">
+                                <Border Classes="change-row">
+                                    <Grid ColumnDefinitions="200,*">
+
+                                        <!-- field label -->
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding Label}"
+                                                   FontWeight="SemiBold"
+                                                   FontSize="13"
+                                                   Foreground="{DynamicResource TextPrimary}"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   ToolTip.Tip="{Binding Label}" />
+
+                                        <!-- before → after -->
+                                        <Grid Grid.Column="1" ColumnDefinitions="*,Auto,*"
+                                              VerticalAlignment="Center">
+
+                                            <!-- old value -->
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding OldValueDisplay}"
+                                                       FontSize="13"
+                                                       VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip.Tip="{Binding OldValueDisplay}">
+                                                <TextBlock.Styles>
+                                                    <Style Selector="TextBlock">
+                                                        <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+                                                        <Setter Property="TextDecorations" Value="Strikethrough" />
+                                                    </Style>
+                                                </TextBlock.Styles>
+                                            </TextBlock>
+
+                                            <!-- arrow -->
+                                            <TextBlock Grid.Column="1"
+                                                       Text="&#x2192;"
+                                                       FontSize="13"
+                                                       Foreground="{DynamicResource TextTertiary}"
+                                                       VerticalAlignment="Center"
+                                                       Margin="8,0" />
+
+                                            <!-- new value -->
+                                            <TextBlock Grid.Column="2"
+                                                       Text="{Binding NewValue}"
+                                                       FontSize="13"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource StatusDirty}"
+                                                       VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip.Tip="{Binding NewValue}" />
+
+                                        </Grid>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
+        <!-- action buttons -->
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="10">
+            <Button Padding="16,8"
+                    IsCancel="True"
+                    Click="OnCancel">
+                <TextBlock Text="Cancel"
+                           VerticalAlignment="Center" />
+            </Button>
+            <Button Padding="16,8"
+                    IsDefault="True"
+                    Classes="accent"
+                    Click="OnSave">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <PathIcon Data="{StaticResource IconSave}"
+                              Width="14" Height="14" />
+                    <TextBlock Text="Save Changes"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+        </StackPanel>
+
+    </StackPanel>
+</Window>

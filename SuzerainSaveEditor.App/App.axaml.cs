@@ -33,18 +33,35 @@ public partial class App : Application
             var schemaService = new SchemaService();
             var fieldResolver = new FieldResolver();
             var discoveryService = new FieldDiscoveryService(schemaService);
+            var undoRedoService = new UndoRedoService();
+            var appDataPathProvider = new AppDataPathProvider();
+            var recentFilesService = new RecentFilesService(appDataPathProvider);
 
             var savePathProvider = new SavePathProvider();
 
             var mainWindow = new MainWindow();
             var fileDialogService = new FileDialogService(mainWindow, savePathProvider);
 
-            mainWindow.DataContext = new MainWindowViewModel(
+            var viewModel = new MainWindowViewModel(
                 saveFileService,
                 schemaService,
                 fieldResolver,
                 fileDialogService,
-                discoveryService);
+                discoveryService,
+                undoRedoService,
+                recentFilesService);
+
+            mainWindow.DataContext = viewModel;
+
+            viewModel.ShowChangeSummaryDialog = async (items) =>
+            {
+                var dialog = new ChangeSummaryDialog();
+                dialog.SetChanges(items);
+                await dialog.ShowDialog(mainWindow);
+                return dialog.Result == ChangeSummaryResult.Save;
+            };
+
+            _ = viewModel.LoadRecentFilesAsync();
 
             desktop.MainWindow = mainWindow;
         }
