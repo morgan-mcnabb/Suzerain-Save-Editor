@@ -1376,6 +1376,334 @@ public sealed class MainWindowViewModelTests
         Assert.False(vm.SaveCommittedToDisk);
     }
 
+    // undo/redo
+
+    [Fact]
+    public async Task UndoRedo_InitialState_CannotUndoOrRedo()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        Assert.False(vm.CanUndo);
+        Assert.False(vm.CanRedo);
+    }
+
+    [Fact]
+    public async Task Undo_AfterEdit_RevertsFieldValue()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var field = vm.GeneralFields.First(f => f.FieldId == "meta.campaignName");
+        var original = field.Value;
+        field.Value = "NEW_CAMPAIGN";
+
+        Assert.True(vm.CanUndo);
+        vm.UndoCommand.Execute(null);
+
+        Assert.Equal(original, field.Value);
+        Assert.False(field.IsDirty);
+        Assert.False(vm.IsDirty);
+        Assert.False(vm.CanUndo);
+    }
+
+    [Fact]
+    public async Task Redo_AfterUndo_ReappliesValue()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var field = vm.GeneralFields.First(f => f.FieldId == "meta.campaignName");
+        field.Value = "NEW_CAMPAIGN";
+
+        vm.UndoCommand.Execute(null);
+        Assert.True(vm.CanRedo);
+
+        vm.RedoCommand.Execute(null);
+
+        Assert.Equal("NEW_CAMPAIGN", field.Value);
+        Assert.True(field.IsDirty);
+        Assert.True(vm.IsDirty);
+        Assert.False(vm.CanRedo);
+    }
+
+    [Fact]
+    public async Task Undo_MultipleDifferentFields_RevertsInLifoOrder()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var campaign = vm.GeneralFields.First(f => f.FieldId == "meta.campaignName");
+        var turn = vm.GeneralFields.First(f => f.FieldId == "meta.turnNo");
+        var originalCampaign = campaign.Value;
+        var originalTurn = turn.Value;
+
+        campaign.Value = "CHANGED";
+        turn.Value = "10";
+
+        // undo turn first (LIFO)
+        vm.UndoCommand.Execute(null);
+        Assert.Equal(originalTurn, turn.Value);
+        Assert.Equal("CHANGED", campaign.Value);
+
+        // undo campaign
+        vm.UndoCommand.Execute(null);
+        Assert.Equal(originalCampaign, campaign.Value);
+        Assert.False(vm.IsDirty);
+    }
+
+    [Fact]
+    public async Task Undo_CoalescesConsecutiveSameFieldEdits()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var field = vm.GeneralFields.First(f => f.FieldId == "meta.campaignName");
+        var original = field.Value;
+
+        // simulate typing keystrokes to the same field
+        field.Value = "N";
+        field.Value = "NE";
+        field.Value = "NEW";
+
+        // one undo should revert all the way back
+        vm.UndoCommand.Execute(null);
+        Assert.Equal(original, field.Value);
+        Assert.False(vm.CanUndo);
+    }
+
+    [Fact]
+    public async Task Undo_BoolField_RevertsToggle()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var field = vm.SordlandFields.FirstOrDefault(f => f.IsBool);
+        Assert.NotNull(field);
+        var original = field.BoolValue;
+
+        field.BoolValue = !original;
+        Assert.True(field.IsDirty);
+
+        vm.UndoCommand.Execute(null);
+
+        Assert.Equal(original, field.BoolValue);
+        Assert.False(field.IsDirty);
+    }
+
+    [Fact]
+    public async Task Redo_BoolField_ReappliesToggle()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var field = vm.SordlandFields.FirstOrDefault(f => f.IsBool);
+        Assert.NotNull(field);
+        var original = field.BoolValue;
+
+        field.BoolValue = !original;
+        vm.UndoCommand.Execute(null);
+        vm.RedoCommand.Execute(null);
+
+        Assert.Equal(!original, field.BoolValue);
+        Assert.True(field.IsDirty);
+    }
+
+    [Fact]
+    public async Task Undo_IntField_RevertsAndClearsValidation()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var field = vm.GeneralFields.First(f => f.FieldId == "meta.turnNo");
+        var original = field.Value;
+        field.Value = "10";
+
+        vm.UndoCommand.Execute(null);
+
+        Assert.Equal(original, field.Value);
+        Assert.Null(field.ValidationError);
+        Assert.False(field.IsDirty);
+    }
+
+    [Fact]
+    public async Task Undo_StackClearedAfterRevertAll()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var field = vm.GeneralFields.First(f => f.FieldId == "meta.campaignName");
+        field.Value = "CHANGED";
+        Assert.True(vm.CanUndo);
+
+        vm.RevertAllCommand.Execute(null);
+
+        Assert.False(vm.CanUndo);
+        Assert.False(vm.CanRedo);
+    }
+
+    [Fact]
+    public async Task Undo_StackClearedAfterSave()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var field = vm.GeneralFields.First(f => f.FieldId == "meta.campaignName");
+        field.Value = "CHANGED";
+        Assert.True(vm.CanUndo);
+
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.False(vm.CanUndo);
+        Assert.False(vm.CanRedo);
+    }
+
+    [Fact]
+    public async Task Undo_StackClearedAfterLoadingNewFile()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var field = vm.GeneralFields.First(f => f.FieldId == "meta.campaignName");
+        field.Value = "CHANGED";
+        Assert.True(vm.CanUndo);
+
+        // open again (simulates loading a different file)
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        Assert.False(vm.CanUndo);
+        Assert.False(vm.CanRedo);
+    }
+
+    [Fact]
+    public async Task Undo_NewEditAfterUndo_ClearsRedoStack()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var campaign = vm.GeneralFields.First(f => f.FieldId == "meta.campaignName");
+        campaign.Value = "FIRST";
+
+        vm.UndoCommand.Execute(null);
+        Assert.True(vm.CanRedo);
+
+        // new edit should clear redo
+        campaign.Value = "SECOND";
+        Assert.False(vm.CanRedo);
+    }
+
+    [Fact]
+    public async Task UndoRedo_FullCycle_MaintainsCorrectDirtyCount()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var campaign = vm.GeneralFields.First(f => f.FieldId == "meta.campaignName");
+        var turn = vm.GeneralFields.First(f => f.FieldId == "meta.turnNo");
+
+        campaign.Value = "CHANGED";
+        Assert.Equal(1, vm.ChangeCount);
+
+        turn.Value = "10";
+        Assert.Equal(2, vm.ChangeCount);
+
+        vm.UndoCommand.Execute(null);
+        Assert.Equal(1, vm.ChangeCount);
+
+        vm.UndoCommand.Execute(null);
+        Assert.Equal(0, vm.ChangeCount);
+
+        vm.RedoCommand.Execute(null);
+        Assert.Equal(1, vm.ChangeCount);
+
+        vm.RedoCommand.Execute(null);
+        Assert.Equal(2, vm.ChangeCount);
+    }
+
+    [Fact]
+    public async Task Undo_WhenNoFileLoaded_DoesNotThrow()
+    {
+        var vm = CreateViewModel();
+
+        // should be a safe no-op
+        vm.UndoCommand.Execute(null);
+        vm.RedoCommand.Execute(null);
+
+        Assert.False(vm.CanUndo);
+        Assert.False(vm.CanRedo);
+    }
+
+    [Fact]
+    public async Task Undo_EnumField_RevertsToOriginalOption()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var field = vm.SordlandFields.FirstOrDefault(f => f.IsEnum && f.Options?.Count > 1);
+        if (field is null) return; // skip if no enum fields in schema
+
+        var original = field.Value;
+        var newOption = field.Options!.First(o => o != original);
+        field.Value = newOption;
+        Assert.True(field.IsDirty);
+
+        vm.UndoCommand.Execute(null);
+
+        Assert.Equal(original, field.Value);
+        Assert.False(field.IsDirty);
+    }
+
+    [Fact]
+    public async Task Undo_UpdatesSubCategoryCardsWhenVisible()
+    {
+        var vm = CreateViewModelWithDiscoveredFields(CreateDiscoveredFieldsWithParentNode());
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var parentNode = vm.CategoryNodes.First(n => n.IsParent);
+        vm.SelectCategory(parentNode);
+        Assert.True(vm.ShowCategoryCards);
+
+        // edit a descendant field
+        var descendantField = parentNode.GetAllDescendantFields().First();
+        descendantField.BoolValue = !descendantField.BoolValue;
+        Assert.Contains(vm.SubCategorySummaries, s => s.HasDirtyFields);
+
+        // undo should refresh the cards
+        vm.UndoCommand.Execute(null);
+        Assert.DoesNotContain(vm.SubCategorySummaries, s => s.HasDirtyFields);
+    }
+
+    [Fact]
+    public async Task Undo_CoalesceThenUndoMultipleFields_CorrectOrder()
+    {
+        var vm = CreateViewModel();
+        await vm.OpenCommand.ExecuteAsync(null);
+
+        var campaign = vm.GeneralFields.First(f => f.FieldId == "meta.campaignName");
+        var turn = vm.GeneralFields.First(f => f.FieldId == "meta.turnNo");
+        var originalCampaign = campaign.Value;
+        var originalTurn = turn.Value;
+
+        // type into campaign (coalesces)
+        campaign.Value = "A";
+        campaign.Value = "AB";
+        campaign.Value = "ABC";
+
+        // type into turn (new entry, stops coalescing on campaign)
+        turn.Value = "7";
+        turn.Value = "8";
+
+        // undo turn (coalesced into one step)
+        vm.UndoCommand.Execute(null);
+        Assert.Equal(originalTurn, turn.Value);
+        Assert.Equal("ABC", campaign.Value);
+
+        // undo campaign (coalesced into one step)
+        vm.UndoCommand.Execute(null);
+        Assert.Equal(originalCampaign, campaign.Value);
+        Assert.False(vm.IsDirty);
+    }
+
     // test doubles
     private sealed class FakeSaveFileService : ISaveFileService
     {

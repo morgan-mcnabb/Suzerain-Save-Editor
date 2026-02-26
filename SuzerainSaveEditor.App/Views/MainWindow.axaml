@@ -15,6 +15,9 @@
     <Window.KeyBindings>
         <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenCommand}" />
         <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveCommand}" />
+        <KeyBinding Gesture="Ctrl+Z" Command="{Binding UndoCommand}" />
+        <KeyBinding Gesture="Ctrl+Y" Command="{Binding RedoCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+Z" Command="{Binding RedoCommand}" />
     </Window.KeyBindings>
 
     <Window.Styles>
@@ -214,6 +217,39 @@
                                 <TextBlock Text="Save" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
+                        <!-- separator between file ops and edit ops -->
+                        <Border Width="1"
+                                Height="20"
+                                Margin="4,0"
+                                Background="{DynamicResource BorderDefault}"
+                                VerticalAlignment="Center" />
+
+                        <Button Command="{Binding UndoCommand}"
+                                Padding="14,8"
+                                ToolTip.Tip="{Binding UndoTooltip}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Data="{StaticResource IconUndo}"
+                                          Width="16" Height="16" />
+                                <TextBlock Text="Undo" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding RedoCommand}"
+                                Padding="14,8"
+                                ToolTip.Tip="{Binding RedoTooltip}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Data="{StaticResource IconRedo}"
+                                          Width="16" Height="16" />
+                                <TextBlock Text="Redo" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- separator between edit ops and revert -->
+                        <Border Width="1"
+                                Height="20"
+                                Margin="4,0"
+                                Background="{DynamicResource BorderDefault}"
+                                VerticalAlignment="Center" />
+
                         <Button Command="{Binding RevertAllCommand}"
                                 Padding="14,8"
                                 ToolTip.Tip="Discard all unsaved changes">

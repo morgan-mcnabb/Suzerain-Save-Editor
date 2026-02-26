@@ -13,9 +13,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly IFieldResolver _fieldResolver;
     private readonly IFileDialogService _fileDialogService;
     private readonly IFieldDiscoveryService _discoveryService;
+    private readonly IUndoRedoService _undoRedoService;
 
     private IEditSession? _editSession;
     private ISchemaService? _activeSchema;
+    private bool _isApplyingUndoRedo;
 
     // backing lists (unfiltered, preserving creation order)
     private readonly List<FieldViewModel> _allGeneralFields = [];
@@ -29,7 +31,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly FieldFilterService _filterService = new();
     private bool _suppressCategoryChanged;
     private CancellationTokenSource? _searchDebounce;
+    private CancellationTokenSource? _statusClearTimer;
     private const int SearchDebounceMs = 250;
+    private const int StatusClearDelayMs = 4000;
 
     // observable collections bound to UI (filtered by search)
     public BatchObservableCollection<FieldViewModel> GeneralFields { get; } = new();
@@ -96,6 +100,18 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _saveCommittedToDisk;
 
+    [ObservableProperty]
+    private bool _canUndo;
+
+    [ObservableProperty]
+    private bool _canRedo;
+
+    [ObservableProperty]
+    private string _undoTooltip = "Nothing to undo";
+
+    [ObservableProperty]
+    private string _redoTooltip = "Nothing to redo";
+
     public string WindowTitle => IsFileLoaded
         ? $"Suzerain Save Editor \u2014 {Path.GetFileName(FilePath)}{(IsDirty ? " *" : "")}"
         : "Suzerain Save Editor";
@@ -105,13 +121,17 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         ISchemaService schemaService,
         IFieldResolver fieldResolver,
         IFileDialogService fileDialogService,
-        IFieldDiscoveryService discoveryService)
+        IFieldDiscoveryService discoveryService,
+        IUndoRedoService? undoRedoService = null)
     {
         _saveFileService = saveFileService;
         _schemaService = schemaService;
         _fieldResolver = fieldResolver;
         _fileDialogService = fileDialogService;
         _discoveryService = discoveryService;
+        _undoRedoService = undoRedoService ?? new UndoRedoService();
+
+        _undoRedoService.StateChanged += OnUndoRedoStateChanged;
     }
 
     // parameterless constructor for avalonia designer
@@ -169,7 +189,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             if (savedCategoryKey is not null)
                 SelectCategoryByKey(savedCategoryKey);
 
-            StatusMessage = "Saved successfully";
+            SetTransientStatus("Saved successfully");
         }
         catch (Exception ex)
         {
@@ -190,16 +210,116 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         _editSession.RevertAll();
         _validationErrors.Clear();
+        _undoRedoService.Clear();
 
         foreach (var field in AllFields())
             field.ResetToOriginal();
 
         UpdateDirtyState();
         PopulateSelectedCategoryContent();
-        StatusMessage = "All changes reverted";
+        SetTransientStatus("All changes reverted");
     }
 
     private bool CanRevert() => IsDirty && IsFileLoaded;
+
+    [RelayCommand(CanExecute = nameof(CanUndo))]
+    private void Undo()
+    {
+        if (_editSession is null) return;
+
+        var entry = _undoRedoService.Undo();
+        if (entry is null) return;
+
+        _isApplyingUndoRedo = true;
+        try
+        {
+            if (entry.OldValue is not null)
+                _editSession.SetValue(entry.FieldId, entry.OldValue);
+            else
+                _editSession.RevertField(entry.FieldId);
+
+            SyncFieldFromSession(entry.FieldId);
+            UpdateDirtyState();
+
+            var label = _fieldLookup.TryGetValue(entry.FieldId, out var vm) ? vm.Label : entry.FieldId;
+            SetTransientStatus($"Undo: {label}");
+
+            if (ShowCategoryCards)
+                RefreshSubCategorySummaries();
+        }
+        finally
+        {
+            _isApplyingUndoRedo = false;
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanRedo))]
+    private void Redo()
+    {
+        if (_editSession is null) return;
+
+        var entry = _undoRedoService.Redo();
+        if (entry is null) return;
+
+        _isApplyingUndoRedo = true;
+        try
+        {
+            _editSession.SetValue(entry.FieldId, entry.NewValue);
+            SyncFieldFromSession(entry.FieldId);
+            UpdateDirtyState();
+
+            var label = _fieldLookup.TryGetValue(entry.FieldId, out var vm) ? vm.Label : entry.FieldId;
+            SetTransientStatus($"Redo: {label}");
+
+            if (ShowCategoryCards)
+                RefreshSubCategorySummaries();
+        }
+        finally
+        {
+            _isApplyingUndoRedo = false;
+        }
+    }
+
+    private void SyncFieldFromSession(string fieldId)
+    {
+        if (_editSession is null) return;
+        if (!_fieldLookup.TryGetValue(fieldId, out var fieldVm)) return;
+
+        var currentValue = _editSession.GetValue(fieldId) ?? "";
+        var isDirty = _editSession.IsFieldDirty(fieldId);
+        var validation = _editSession.ValidateField(fieldId, currentValue);
+        var error = validation.IsValid ? null : validation.Error;
+
+        fieldVm.UpdateFromSession(currentValue, isDirty, error);
+
+        if (error is not null)
+            _validationErrors[fieldId] = error;
+        else
+            _validationErrors.Remove(fieldId);
+    }
+
+    private void OnUndoRedoStateChanged()
+    {
+        CanUndo = _undoRedoService.CanUndo;
+        CanRedo = _undoRedoService.CanRedo;
+        UndoCommand.NotifyCanExecuteChanged();
+        RedoCommand.NotifyCanExecuteChanged();
+
+        var undoPeek = _undoRedoService.PeekUndo();
+        UndoTooltip = undoPeek is not null
+            ? $"Undo: {GetFieldLabel(undoPeek.FieldId)} (Ctrl+Z)"
+            : "Nothing to undo";
+
+        var redoPeek = _undoRedoService.PeekRedo();
+        RedoTooltip = redoPeek is not null
+            ? $"Redo: {GetFieldLabel(redoPeek.FieldId)} (Ctrl+Y)"
+            : "Nothing to redo";
+    }
+
+    private string GetFieldLabel(string fieldId)
+    {
+        return _fieldLookup.TryGetValue(fieldId, out var vm) ? vm.Label : fieldId;
+    }
 
     partial void OnSearchTextChanged(string value)
     {
@@ -318,6 +438,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         _activeSchema = activeSchema;
         _editSession = editSession;
+        _undoRedoService.Clear();
 
         FilePath = path;
         IsFileLoaded = true;
@@ -507,8 +628,18 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     {
         if (_editSession is null) return;
 
+        // when undo/redo is applying a value, do not push back onto the stack
+        if (_isApplyingUndoRedo) return;
+
         SaveCommittedToDisk = false;
+
+        // capture the value before this edit so undo can restore it
+        var previousValue = _editSession.GetValue(fieldId);
         var result = _editSession.SetValue(fieldId, value);
+
+        // only record valid edits in the undo stack
+        if (result.IsValid)
+            _undoRedoService.Push(fieldId, previousValue, value);
 
         var fieldVm = FindFieldViewModel(fieldId);
         if (fieldVm is null) return;
@@ -563,6 +694,34 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             1 => FormatSingleValidationError(),
             _ => $"{_validationErrors.Count} validation errors"
         };
+    }
+
+    private string DefaultStatusMessage()
+    {
+        if (!IsFileLoaded) return "Ready";
+        return $"Loaded: {Path.GetFileName(FilePath)}";
+    }
+
+    private void SetTransientStatus(string message)
+    {
+        StatusMessage = message;
+
+        var newCts = new CancellationTokenSource();
+        var old = Interlocked.Exchange(ref _statusClearTimer, newCts);
+        old?.Cancel();
+        old?.Dispose();
+        BeginClearStatusDebounced(newCts.Token);
+    }
+
+    // async void is intentional — fire-and-forget with internal error handling
+    private async void BeginClearStatusDebounced(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(StatusClearDelayMs, token);
+            StatusMessage = DefaultStatusMessage();
+        }
+        catch (OperationCanceledException) { }
     }
 
     private string FormatSingleValidationError()

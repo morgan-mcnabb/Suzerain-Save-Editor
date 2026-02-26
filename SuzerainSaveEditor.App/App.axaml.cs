@@ -33,6 +33,7 @@ public partial class App : Application
             var schemaService = new SchemaService();
             var fieldResolver = new FieldResolver();
             var discoveryService = new FieldDiscoveryService(schemaService);
+            var undoRedoService = new UndoRedoService();
 
             var savePathProvider = new SavePathProvider();
 
@@ -44,7 +45,8 @@ public partial class App : Application
                 schemaService,
                 fieldResolver,
                 fileDialogService,
-                discoveryService);
+                discoveryService,
+                undoRedoService);
 
             desktop.MainWindow = mainWindow;
         }
