@@ -734,14 +734,48 @@
                 IsHitTestVisible="False">
             <StackPanel VerticalAlignment="Center"
                         HorizontalAlignment="Center"
-                        Spacing="12">
-                <TextBlock Text="Drop save file here"
-                           FontSize="24"
-                           FontWeight="SemiBold"
-                           Foreground="{DynamicResource AccentPrimary}"
-                           HorizontalAlignment="Center" />
+                        Spacing="16">
+                <!-- top divider -->
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            Spacing="8">
+                    <Border Height="1" Width="60"
+                            Background="{DynamicResource BorderDefault}"
+                            VerticalAlignment="Center" />
+                    <TextBlock Text="&#x25C6;"
+                               FontSize="10"
+                               Foreground="{DynamicResource AccentPrimary}"
+                               VerticalAlignment="Center" />
+                    <Border Height="1" Width="60"
+                            Background="{DynamicResource BorderDefault}"
+                            VerticalAlignment="Center" />
+                </StackPanel>
+
+                <TextBlock Text="DROP SAVE FILE HERE"
+                           FontSize="22"
+                           FontWeight="Light"
+                           LetterSpacing="4"
+                           HorizontalAlignment="Center"
+                           Foreground="{DynamicResource AccentPrimary}" />
+
+                <!-- bottom divider -->
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            Spacing="8">
+                    <Border Height="1" Width="60"
+                            Background="{DynamicResource BorderDefault}"
+                            VerticalAlignment="Center" />
+                    <TextBlock Text="&#x25C6;"
+                               FontSize="10"
+                               Foreground="{DynamicResource AccentPrimary}"
+                               VerticalAlignment="Center" />
+                    <Border Height="1" Width="60"
+                            Background="{DynamicResource BorderDefault}"
+                            VerticalAlignment="Center" />
+                </StackPanel>
+
                 <TextBlock Text=".json files only"
-                           FontSize="14"
+                           FontSize="13"
                            Foreground="{DynamicResource TextTertiary}"
                            HorizontalAlignment="Center" />
             </StackPanel>
