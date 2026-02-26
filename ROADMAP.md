@@ -11,10 +11,10 @@
 
 ## v1.2 — Quality of Life
 
-- [ ] Undo/Redo. per-field undo instead of just "Revert All"
-- [ ] Recent files. remember last opened saves, skip the file picker
-- [ ] Drag-and-drop. drop a .json onto the window to open it
-- [ ] Change summary before save. diff dialog showing what you changed before committing
+- [x] Undo/Redo. per-field undo instead of just "Revert All"
+- [x] Recent files. remember last opened saves, skip the file picker
+- [x] Drag-and-drop. drop a .json onto the window to open it
+- [x] Change summary before save. diff dialog showing what you changed before committing
 
 ## v1.3 — Power User Features
 
